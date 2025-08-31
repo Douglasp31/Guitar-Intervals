@@ -1,0 +1,183 @@
+:root {
+  --fret-count: 22;
+  --string-count: 6;
+  --note-size: 36px;
+  --nut-width: 12px;
+  --bg: #f6f5f3;
+  --fret: #d9d5cf;
+  --string: #9a8e80;
+  --text: #111;
+  --white: #fff;
+  --yellow: #ffd54d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: var(--text);
+  background: var(--bg);
+}
+
+.app {
+  max-width: 1200px;
+  margin: 24px auto 64px;
+  padding: 0 16px;
+}
+
+.board-container {
+  position: relative;
+  background: #efece7;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  padding: 16px 16px 24px;
+}
+
+.fret-numbers {
+  display: grid;
+  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  gap: 0;
+  font-size: 12px;
+  color: #444;
+}
+.fret-markers {
+  display: grid;
+  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  align-items: center;
+  height: 24px;
+}
+
+.fret-markers .dot {
+  justify-self: center;
+  width: 8px;
+  height: 8px;
+  background: #777;
+  border-radius: 50%;
+}
+
+.fret-markers .double {
+  display: grid;
+  grid-template-columns: auto auto;
+  column-gap: 6px;
+}
+
+.fret-markers .double .dot { width: 7px; height: 7px; }
+
+
+.fret-numbers div {
+  text-align: center;
+  padding: 4px 0 8px;
+}
+
+.fretboard {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr); /* left labels + nut + 22 frets */
+  grid-template-rows: repeat(var(--string-count), 64px);
+  gap: 0;
+  background: linear-gradient(#d3cfc8, #dad5cd);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* Vertical frets */
+.fretboard::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 40px; /* start after string labels */
+  right: 0;
+  background-image:
+    linear-gradient(90deg, rgba(0,0,0,0.12) 0, rgba(0,0,0,0.12) 1px, transparent 1px),
+    linear-gradient(#0000, #0000);
+  background-size: calc(100% / (var(--fret-count) + 1)) 100%, 100% 100%;
+  background-position: 0 0;
+  pointer-events: none;
+}
+
+/* Nut */
+.nut {
+  grid-row: 1 / span var(--string-count);
+  grid-column: 2 / 3;
+  background: #bbb4aa;
+  box-shadow: inset -2px 0 0 rgba(0,0,0,0.25);
+}
+
+/* Per-string horizontal line */
+.string-row {
+  position: relative;
+  display: contents; /* we draw notes inside cells */
+}
+
+.string-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: #333;
+}
+
+.string-line {
+  position: absolute;
+  left: 40px; /* after labels */
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: var(--string);
+  pointer-events: none;
+}
+
+.cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.note {
+  width: var(--note-size);
+  height: var(--note-size);
+  border-radius: 50%;
+  background: var(--white);
+  color: var(--text);
+  border: 1.5px solid #444;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
+  justify-items: center;
+  text-align: center;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 80ms ease, box-shadow 80ms ease, background-color 120ms ease;
+}
+
+.note:hover { transform: scale(1.05); }
+
+.note .interval { font-size: 11px; font-weight: 700; }
+.note .letter { font-size: 12px; }
+
+/* Sharps: black fill, white text */
+.note.sharp { background: #111; border-color: #000; color: #fff; }
+
+/* Root override keeps yellow highlight readable even for sharps */
+.note.root { background: var(--yellow); color: var(--text); border-color: #444; }
+
+.ghost {
+  opacity: 0.14;
+}
+
+.hint {
+  color: #555;
+  font-size: 14px;
+}
+
+@media (max-width: 900px) {
+  :root { --note-size: 30px; }
+  .fretboard { grid-template-rows: repeat(var(--string-count), 56px); }
+}
+
+
