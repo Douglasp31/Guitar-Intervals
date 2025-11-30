@@ -102,24 +102,26 @@ const GuitarAudio = (function () {
     const gainNode = ctx.createGain();
 
     oscillator.type = 'triangle';
-    oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+    oscillator.frequency.value = frequency;
 
-    const now = ctx.currentTime + (delay || 0);
+    const startTime = ctx.currentTime + (delay || 0);
     const attackTime = 0.01;
     const decayTime = 0.3;
     const sustainLevel = 0.25;
     const releaseTime = 1.0;
 
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(0.4, now + attackTime);
-    gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, now + attackTime + decayTime + releaseTime);
+    // Set initial gain to 0, then schedule the envelope
+    gainNode.gain.value = 0;
+    gainNode.gain.setValueAtTime(0, startTime);
+    gainNode.gain.linearRampToValueAtTime(0.4, startTime + attackTime);
+    gainNode.gain.linearRampToValueAtTime(sustainLevel, startTime + attackTime + decayTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + attackTime + decayTime + releaseTime);
 
     oscillator.connect(gainNode);
     gainNode.connect(ctx.destination);
 
-    oscillator.start(now);
-    oscillator.stop(now + attackTime + decayTime + releaseTime + 0.1);
+    oscillator.start(startTime);
+    oscillator.stop(startTime + attackTime + decayTime + releaseTime + 0.1);
   }
 
   // Play a triad (3 notes) with slight strum delay
