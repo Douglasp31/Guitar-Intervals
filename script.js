@@ -3,6 +3,107 @@
 // - Standard tuning (low to high): E A D G B E
 // - Click a note to show intervals relative to it; highlight root in yellow
 
+// ============================================
+// Shared Audio Module (Web Audio API)
+// ============================================
+const GuitarAudio = (function () {
+  let audioCtx = null;
+
+  // Open string frequencies in Hz (standard tuning, low to high)
+  const STRING_FREQUENCIES = {
+    'E2': 82.41,   // Low E (6th string)
+    'A2': 110.00,  // A (5th string)
+    'D3': 146.83,  // D (4th string)
+    'G3': 196.00,  // G (3rd string)
+    'B3': 246.94,  // B (2nd string)
+    'E4': 329.63   // High E (1st string)
+  };
+
+  // Map string letter to base frequency (strings from low to high)
+  const STRING_BASE_FREQ = {
+    'E-low': 82.41,
+    'A': 110.00,
+    'D': 146.83,
+    'G': 196.00,
+    'B': 246.94,
+    'E-high': 329.63
+  };
+
+  // String order for determining which E string (low or high)
+  const STRING_ORDER = ['E-low', 'A', 'D', 'G', 'B', 'E-high'];
+
+  // Initialize audio context on first user interaction
+  function initAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  }
+
+  // Calculate frequency for a given string and fret
+  // Each fret = 1 semitone = multiply by 2^(1/12)
+  function getFrequency(stringName, fret, stringIndex) {
+    let baseFreq;
+
+    // Handle E strings (need to differentiate low vs high)
+    if (stringName === 'E') {
+      // stringIndex 0 = high E (top of visual fretboard), stringIndex 5 = low E (bottom)
+      // In our reversed array: index 0 = E-high, index 5 = E-low
+      baseFreq = stringIndex === 0 ? STRING_BASE_FREQ['E-high'] : STRING_BASE_FREQ['E-low'];
+    } else {
+      baseFreq = STRING_BASE_FREQ[stringName];
+    }
+
+    // Calculate frequency: base * 2^(fret/12)
+    return baseFreq * Math.pow(2, fret / 12);
+  }
+
+  // Play a note with a guitar-like envelope
+  function playNote(stringName, fret, stringIndex) {
+    const ctx = initAudio();
+    const frequency = getFrequency(stringName, fret, stringIndex);
+
+    // Create oscillator for the fundamental tone
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    // Use triangle wave for a softer, more guitar-like tone
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+
+    // Create a pluck-like envelope (quick attack, gradual decay)
+    const now = ctx.currentTime;
+    const attackTime = 0.01;
+    const decayTime = 0.3;
+    const sustainLevel = 0.3;
+    const releaseTime = 0.8;
+
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.5, now + attackTime);
+    gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + attackTime + decayTime + releaseTime);
+
+    // Connect nodes
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    // Play the note
+    oscillator.start(now);
+    oscillator.stop(now + attackTime + decayTime + releaseTime + 0.1);
+  }
+
+  return {
+    playNote: playNote,
+    initAudio: initAudio
+  };
+})();
+
+// ============================================
+// Fretboard App 1: Intervals
+// ============================================
 (function () {
   /**
    * Musical data
@@ -42,7 +143,7 @@
   const STRINGS_LOW_TO_HIGH = ["E", "A", "D", "G", "B", "E"]; // low to high
 
   // UI constants
-  const FRET_COUNT = 22; // not including open string (we still render open position cell)
+  const FRET_COUNT = 22; // frets 0-22 (23 positions total including open string)
 
   // DOM
   const boardEl = document.getElementById("fretboard");
@@ -51,17 +152,17 @@
   const fretNumberBottomEl = document.getElementById("fret-numbers-bottom");
   const markerBottomEl = document.getElementById("fret-markers-bottom");
 
-  // Set CSS variables so CSS grid knows dimensions
-  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT));
+  // Set CSS variables so CSS grid knows dimensions (23 positions for frets 0-22)
+  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT + 1));
 
   // Build fret number header (0..22) using explicit grid-column placement for perfect alignment
   function renderFretNumbers(targetEl) {
     let html = '';
     html += `<div style="grid-column:1"></div>`; // label spacer
-    html += `<div style=\"grid-column:2\">0</div>`; // nut
-    for (let f = 1; f <= FRET_COUNT; f += 1) {
-      const col = 2 + f; // offset by label + nut
-      html += `<div style=\"grid-column:${col}\">${f}</div>`;
+    html += `<div style="grid-column:2"></div>`; // nut spacer
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f; // offset by label + nut
+      html += `<div style="grid-column:${col}">${f}</div>`;
     }
     targetEl.innerHTML = html;
   }
@@ -71,12 +172,12 @@
     const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
     let html = '';
     // empty columns are implicit; only place dots where needed
-    for (let f = 1; f <= FRET_COUNT; f += 1) {
-      const col = 2 + f; // grid column matching the fret number
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f; // grid column matching the fret number
       if (singleDotFrets.has(f)) {
-        html += `<div class=\"dot\" style=\"grid-column:${col}\" aria-hidden=\"true\"></div>`;
+        html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
       } else if (f === 12) {
-        html += `<div class=\"double\" style=\"grid-column:${col}\" aria-hidden=\"true\"><div class=\"dot\"></div><div class=\"dot\"></div></div>`;
+        html += `<div class="double" style="grid-column:${col}" aria-hidden="true"><div class="dot"></div><div class="dot"></div></div>`;
       }
     }
     targetEl.innerHTML = html;
@@ -114,14 +215,13 @@
       html += `<div class="string-label cell">${openNote}</div>`;
 
       // Open string + 22 frets => we need FRET_COUNT cells beyond the nut column; each cell will contain a note circle
-      for (let fret = 1; fret <= FRET_COUNT; fret += 1) {
+      for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
         // Fret number 'fret' corresponds to semitone steps from open string = fret
         const stepsFromOpen = fret; // because 1st fret = +1 semitone
         const noteName = noteUp(openNote, stepsFromOpen);
-        const id = `${openNote}-${fret}`;
         const sharpClass = noteName.includes('#') ? ' sharp' : '';
         html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">
-          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">
+          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" data-string-index=\"${rowIndex}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">
             <span class="interval ghost">${noteName}</span>
             <span class="letter ghost">${noteName}</span>
           </button>
@@ -187,6 +287,12 @@
     const note = btn.getAttribute("data-note");
     if (!note) return;
 
+    // Play the note sound
+    const openString = btn.getAttribute("data-open");
+    const fret = parseInt(btn.getAttribute("data-fret"), 10);
+    const stringIndex = parseInt(btn.getAttribute("data-string-index"), 10);
+    GuitarAudio.playNote(openString, fret, stringIndex);
+
     if (activeRoot === note) {
       clearIntervals();
     } else {
@@ -241,16 +347,16 @@
   if (!boardEl) return;
 
   // Ensure CSS var is set (global)
-  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT));
+  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT + 1));
 
   function renderFretNumbers(targetEl) {
     if (!targetEl) return;
     let html = '';
     html += `<div style="grid-column:1"></div>`; // label spacer
-    html += `<div style=\"grid-column:2\">0</div>`; // nut
-    for (let f = 1; f <= FRET_COUNT; f += 1) {
-      const col = 2 + f;
-      html += `<div style=\"grid-column:${col}\">${f}</div>`;
+    html += `<div style="grid-column:2"></div>`; // nut spacer
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      html += `<div style="grid-column:${col}">${f}</div>`;
     }
     targetEl.innerHTML = html;
   }
@@ -259,12 +365,12 @@
     if (!targetEl) return;
     const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
     let html = '';
-    for (let f = 1; f <= FRET_COUNT; f += 1) {
-      const col = 2 + f;
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
       if (singleDotFrets.has(f)) {
-        html += `<div class=\"dot\" style=\"grid-column:${col}\" aria-hidden=\"true\"></div>`;
+        html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
       } else if (f === 12) {
-        html += `<div class=\"double\" style=\"grid-column:${col}\" aria-hidden=\"true\"><div class=\"dot\"></div><div class=\"dot\"></div></div>`;
+        html += `<div class="double" style="grid-column:${col}" aria-hidden="true"><div class="dot"></div><div class="dot"></div></div>`;
       }
     }
     targetEl.innerHTML = html;
@@ -280,13 +386,13 @@
     const nutDiv = `<div class=\"nut\" aria-hidden=\"true\"></div>`;
     const stringsTopToBottom = [...STRINGS_LOW_TO_HIGH].reverse();
     let html = nutDiv;
-    stringsTopToBottom.forEach((openNote) => {
+    stringsTopToBottom.forEach((openNote, rowIndex) => {
       html += `<div class=\"string-label cell\">${openNote}</div>`;
-      for (let fret = 1; fret <= FRET_COUNT; fret += 1) {
+      for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
         const stepsFromOpen = fret;
         const noteName = noteUp(openNote, stepsFromOpen);
         const sharpClass = noteName.includes('#') ? ' sharp' : '';
-        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">\n          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">\n            <span class=\"interval ghost\"></span>\n            <span class=\"letter\">${noteName}</span>\n          </button>\n        </div>`;
+        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">\n          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" data-string-index=\"${rowIndex}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">\n            <span class=\"interval ghost\"></span>\n            <span class=\"letter\">${noteName}</span>\n          </button>\n        </div>`;
       }
     });
     boardEl.innerHTML = html;
@@ -352,6 +458,13 @@
     if (!btn) return;
     const note = btn.getAttribute('data-note');
     if (!note) return;
+
+    // Play the note sound
+    const openString = btn.getAttribute('data-open');
+    const fret = parseInt(btn.getAttribute('data-fret'), 10);
+    const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
+    GuitarAudio.playNote(openString, fret, stringIndex);
+
     if (activeRoot === note) {
       clearTriad();
     } else {
@@ -402,16 +515,16 @@
   const markerBottomEl = document.getElementById("fret-markers-bottom-3");
   if (!boardEl) return;
 
-  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT));
+  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT + 1));
 
   function renderFretNumbers(targetEl) {
     if (!targetEl) return;
     let html = '';
-    html += `<div style=\"grid-column:1\"></div>`; // label spacer
-    html += `<div style=\"grid-column:2\">0</div>`; // nut
-    for (let f = 1; f <= FRET_COUNT; f += 1) {
-      const col = 2 + f;
-      html += `<div style=\"grid-column:${col}\">${f}</div>`;
+    html += `<div style="grid-column:1"></div>`; // label spacer
+    html += `<div style="grid-column:2"></div>`; // nut spacer
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      html += `<div style="grid-column:${col}">${f}</div>`;
     }
     targetEl.innerHTML = html;
   }
@@ -420,12 +533,12 @@
     if (!targetEl) return;
     const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
     let html = '';
-    for (let f = 1; f <= FRET_COUNT; f += 1) {
-      const col = 2 + f;
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
       if (singleDotFrets.has(f)) {
-        html += `<div class=\"dot\" style=\"grid-column:${col}\" aria-hidden=\"true\"></div>`;
+        html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
       } else if (f === 12) {
-        html += `<div class=\"double\" style=\"grid-column:${col}\" aria-hidden=\"true\"><div class=\"dot\"></div><div class=\"dot\"></div></div>`;
+        html += `<div class="double" style="grid-column:${col}" aria-hidden="true"><div class="dot"></div><div class="dot"></div></div>`;
       }
     }
     targetEl.innerHTML = html;
@@ -442,13 +555,13 @@
     const nutDiv = `<div class=\"nut\" aria-hidden=\"true\"></div>`;
     const stringsTopToBottom = [...STRINGS_LOW_TO_HIGH].reverse();
     let html = nutDiv;
-    stringsTopToBottom.forEach((openNote) => {
+    stringsTopToBottom.forEach((openNote, rowIndex) => {
       html += `<div class=\"string-label cell\">${openNote}</div>`;
-      for (let fret = 1; fret <= FRET_COUNT; fret += 1) {
+      for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
         const stepsFromOpen = fret;
         const noteName = noteUp(openNote, stepsFromOpen);
         const sharpClass = noteName.includes('#') ? ' sharp' : '';
-        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">\n          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">\n            <span class=\"interval ghost\"></span>\n            <span class=\"letter\">${noteName}</span>\n          </button>\n        </div>`;
+        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">\n          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" data-string-index=\"${rowIndex}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">\n            <span class=\"interval ghost\"></span>\n            <span class=\"letter\">${noteName}</span>\n          </button>\n        </div>`;
       }
     });
     boardEl.innerHTML = html;
@@ -513,6 +626,13 @@
     if (!btn) return;
     const note = btn.getAttribute('data-note');
     if (!note) return;
+
+    // Play the note sound
+    const openString = btn.getAttribute('data-open');
+    const fret = parseInt(btn.getAttribute('data-fret'), 10);
+    const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
+    GuitarAudio.playNote(openString, fret, stringIndex);
+
     if (activeRoot === note) {
       clearTriad();
     } else {

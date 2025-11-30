@@ -1,8 +1,8 @@
 :root {
-  --fret-count: 22;
+  --fret-count: 23;
   --string-count: 6;
   --note-size: 36px;
-  --nut-width: 12px;
+  --nut-width: 6px;
   --bg: #f6f5f3;
   --fret: #d9d5cf;
   --string: #9a8e80;
