@@ -95,8 +95,59 @@ const GuitarAudio = (function () {
     oscillator.stop(now + attackTime + decayTime + releaseTime + 0.1);
   }
 
+  // Play a frequency directly (for triad playback)
+  function playFrequency(frequency, delay) {
+    const ctx = initAudio();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(frequency, ctx.currentTime);
+
+    const now = ctx.currentTime + (delay || 0);
+    const attackTime = 0.01;
+    const decayTime = 0.3;
+    const sustainLevel = 0.25;
+    const releaseTime = 1.0;
+
+    gainNode.gain.setValueAtTime(0, now);
+    gainNode.gain.linearRampToValueAtTime(0.4, now + attackTime);
+    gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, now + attackTime + decayTime + releaseTime);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    oscillator.start(now);
+    oscillator.stop(now + attackTime + decayTime + releaseTime + 0.1);
+  }
+
+  // Play a triad (3 notes) with slight strum delay
+  // intervals: array of semitone offsets from root, e.g., [0, 4, 7] for major triad
+  function playTriad(rootNote, intervals) {
+    const ctx = initAudio();
+
+    // Base frequency for the root note (use middle octave ~220Hz range)
+    const NOTE_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    const rootIndex = NOTE_ORDER.indexOf(rootNote);
+
+    // Use A3 (220Hz) as reference, calculate root frequency
+    const A3 = 220;
+    const A_INDEX = 9; // A is at index 9 in NOTE_ORDER
+    const semitonesFromA = rootIndex - A_INDEX;
+    const rootFreq = A3 * Math.pow(2, semitonesFromA / 12);
+
+    // Play each note of the triad with slight delay for strum effect
+    intervals.forEach((semitones, index) => {
+      const freq = rootFreq * Math.pow(2, semitones / 12);
+      const delay = index * 0.08; // 80ms between each note for strum effect
+      playFrequency(freq, delay);
+    });
+  }
+
   return {
     playNote: playNote,
+    playTriad: playTriad,
     initAudio: initAudio
   };
 })();
@@ -459,17 +510,13 @@ const GuitarAudio = (function () {
     const note = btn.getAttribute('data-note');
     if (!note) return;
 
-    // Play the note sound
-    const openString = btn.getAttribute('data-open');
-    const fret = parseInt(btn.getAttribute('data-fret'), 10);
-    const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
-    GuitarAudio.playNote(openString, fret, stringIndex);
-
     if (activeRoot === note) {
       clearTriad();
     } else {
       activeRoot = note;
       showMajorTriad(note);
+      // Play the major triad (Root, Major 3rd, Perfect 5th)
+      GuitarAudio.playTriad(note, [0, 4, 7]);
     }
   });
 
@@ -627,17 +674,13 @@ const GuitarAudio = (function () {
     const note = btn.getAttribute('data-note');
     if (!note) return;
 
-    // Play the note sound
-    const openString = btn.getAttribute('data-open');
-    const fret = parseInt(btn.getAttribute('data-fret'), 10);
-    const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
-    GuitarAudio.playNote(openString, fret, stringIndex);
-
     if (activeRoot === note) {
       clearTriad();
     } else {
       activeRoot = note;
       showMinorTriad(note);
+      // Play the minor triad (Root, minor 3rd, Perfect 5th)
+      GuitarAudio.playTriad(note, [0, 3, 7]);
     }
   });
 
