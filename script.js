@@ -129,10 +129,12 @@ const GuitarAudio = (function () {
   // intervals: array of semitone offsets from root, e.g., [0, 4, 7] for major triad
   function playTriad(rootFrequency, intervals) {
     initAudio();
+    console.log('playTriad called with rootFrequency:', rootFrequency, 'intervals:', intervals);
 
     // Play each note of the triad with slight delay for strum effect
     intervals.forEach((semitones, index) => {
       const freq = rootFrequency * Math.pow(2, semitones / 12);
+      console.log('Playing freq:', freq, 'semitones:', semitones, 'delay:', index * 0.08);
       const delay = index * 0.08; // 80ms between each note for strum effect
       playFrequency(freq, delay);
     });
@@ -514,6 +516,7 @@ const GuitarAudio = (function () {
       const fret = parseInt(btn.getAttribute('data-fret'), 10);
       const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
       const rootFreq = GuitarAudio.getFrequency(openString, fret, stringIndex);
+      console.log('Major Triad - String:', openString, 'Fret:', fret, 'StringIndex:', stringIndex, 'RootFreq:', rootFreq);
       GuitarAudio.playTriad(rootFreq, [0, 4, 7]);
     }
   });
