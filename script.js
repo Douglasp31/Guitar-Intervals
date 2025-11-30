@@ -125,23 +125,14 @@ const GuitarAudio = (function () {
   }
 
   // Play a triad (3 notes) with slight strum delay
+  // rootFrequency: the actual frequency of the root note clicked
   // intervals: array of semitone offsets from root, e.g., [0, 4, 7] for major triad
-  function playTriad(rootNote, intervals) {
-    const ctx = initAudio();
-
-    // Base frequency for the root note (use middle octave ~220Hz range)
-    const NOTE_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    const rootIndex = NOTE_ORDER.indexOf(rootNote);
-
-    // Use A3 (220Hz) as reference, calculate root frequency
-    const A3 = 220;
-    const A_INDEX = 9; // A is at index 9 in NOTE_ORDER
-    const semitonesFromA = rootIndex - A_INDEX;
-    const rootFreq = A3 * Math.pow(2, semitonesFromA / 12);
+  function playTriad(rootFrequency, intervals) {
+    initAudio();
 
     // Play each note of the triad with slight delay for strum effect
     intervals.forEach((semitones, index) => {
-      const freq = rootFreq * Math.pow(2, semitones / 12);
+      const freq = rootFrequency * Math.pow(2, semitones / 12);
       const delay = index * 0.08; // 80ms between each note for strum effect
       playFrequency(freq, delay);
     });
@@ -150,6 +141,7 @@ const GuitarAudio = (function () {
   return {
     playNote: playNote,
     playTriad: playTriad,
+    getFrequency: getFrequency,
     initAudio: initAudio
   };
 })();
@@ -517,8 +509,12 @@ const GuitarAudio = (function () {
     } else {
       activeRoot = note;
       showMajorTriad(note);
-      // Play the major triad (Root, Major 3rd, Perfect 5th)
-      GuitarAudio.playTriad(note, [0, 4, 7]);
+      // Play the major triad (Root, Major 3rd, Perfect 5th) at the clicked pitch
+      const openString = btn.getAttribute('data-open');
+      const fret = parseInt(btn.getAttribute('data-fret'), 10);
+      const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
+      const rootFreq = GuitarAudio.getFrequency(openString, fret, stringIndex);
+      GuitarAudio.playTriad(rootFreq, [0, 4, 7]);
     }
   });
 
@@ -681,8 +677,12 @@ const GuitarAudio = (function () {
     } else {
       activeRoot = note;
       showMinorTriad(note);
-      // Play the minor triad (Root, minor 3rd, Perfect 5th)
-      GuitarAudio.playTriad(note, [0, 3, 7]);
+      // Play the minor triad (Root, minor 3rd, Perfect 5th) at the clicked pitch
+      const openString = btn.getAttribute('data-open');
+      const fret = parseInt(btn.getAttribute('data-fret'), 10);
+      const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
+      const rootFreq = GuitarAudio.getFrequency(openString, fret, stringIndex);
+      GuitarAudio.playTriad(rootFreq, [0, 3, 7]);
     }
   });
 
