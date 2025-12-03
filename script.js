@@ -253,9 +253,6 @@ const FretboardCore = (function () {
     },
     1: { // Root on B (index 1)
       // Cm at fret 1: B/1=C, need Eb(b3) and G(5)
-      // G/0=G(5), E/11=Eb(b3)... too far. Use E/0=E then need different approach
-      // Actually: G/0=G(5), high E at fret -1 would be Eb but can't be negative
-      // Alternative shape for fret 1+
       notes: [
         { stringOffset: 1, fretOffset: -1, role: '5' },   // P5 on G (1 fret lower)
         { stringOffset: 0, fretOffset: 0, role: 'R' },    // Root on B
@@ -268,6 +265,110 @@ const FretboardCore = (function () {
         { stringOffset: 3, fretOffset: -3, role: '5' },   // P5 on D
         { stringOffset: 2, fretOffset: -3, role: 'R' },   // Root on G (octave down)
         { stringOffset: 1, fretOffset: -4, role: 'b3' }   // m3 on B
+      ]
+    }
+  };
+
+  // Alternative shapes (inversions) for when standard shapes would require negative frets
+  // These use shapes that go UP the fretboard instead of down
+  const MAJOR_TRIAD_ALT_SHAPES = {
+    5: { // Root on low E - 2nd inversion going up (5, R, 3)
+      // E major at fret 0: E/0=E, A/2=B(5), D/2=E(R), G/1=G#(3)
+      notes: [
+        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on A (fret+2)
+        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on D (fret+2)
+        { stringOffset: -3, fretOffset: 1, role: '3' }    // M3 on G (fret+1)
+      ]
+    },
+    4: { // Root on A - 2nd inversion going up
+      // A major at fret 0: A/0=A, D/2=E(5), G/2=A(R), B/2=C#(3)
+      notes: [
+        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on D (fret+2)
+        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on G (fret+2)
+        { stringOffset: -3, fretOffset: 2, role: '3' }    // M3 on B (fret+2)
+      ]
+    },
+    3: { // Root on D - 2nd inversion going up
+      // D major at fret 0: D/0=D, G/2=A(5), B/3=D(R), E/2=F#(3)
+      notes: [
+        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on G (fret+2)
+        { stringOffset: -2, fretOffset: 3, role: 'R' },   // R on B (fret+3, G-B adjustment)
+        { stringOffset: -3, fretOffset: 2, role: '3' }    // M3 on E (fret+2)
+      ]
+    },
+    2: { // Root on G - use 5 on D string (lower string)
+      // G major at fret 0: D/0=D(5), G/0=G(R), B/0=B(3)
+      notes: [
+        { stringOffset: 1, fretOffset: 0, role: '5' },    // P5 on D (same fret)
+        { stringOffset: 0, fretOffset: 0, role: 'R' },    // R on G
+        { stringOffset: -1, fretOffset: 0, role: '3' }    // M3 on B (same fret, G-B=M3)
+      ]
+    },
+    1: { // Root on B - shifted shape using D, G, B
+      // B major at fret 0: D/4=F#(5), G/4=B(R), B/4=D#(3)
+      notes: [
+        { stringOffset: 2, fretOffset: 4, role: '5' },    // P5 on D (fret+4)
+        { stringOffset: 1, fretOffset: 4, role: 'R' },    // R on G (fret+4)
+        { stringOffset: 0, fretOffset: 4, role: '3' }     // M3 on B (fret+4)
+      ]
+    },
+    0: { // Root on high E - 1st inversion using D, G, B
+      // E major at fret 0: D/2=E(R), G/1=G#(3), B/0=B(5)
+      notes: [
+        { stringOffset: 3, fretOffset: 2, role: 'R' },    // R on D (fret+2)
+        { stringOffset: 2, fretOffset: 1, role: '3' },    // M3 on G (fret+1)
+        { stringOffset: 1, fretOffset: 0, role: '5' }     // P5 on B (same fret)
+      ]
+    }
+  };
+
+  const MINOR_TRIAD_ALT_SHAPES = {
+    5: { // Root on low E - inversion going up
+      // Em at fret 0: E/0=E, A/2=B(5), D/2=E(R), G/0=G(b3)
+      notes: [
+        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on A (fret+2)
+        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on D (fret+2)
+        { stringOffset: -3, fretOffset: 0, role: 'b3' }   // m3 on G (same fret)
+      ]
+    },
+    4: { // Root on A - inversion going up
+      // Am at fret 0: A/0=A, D/2=E(5), G/2=A(R), B/1=C(b3)
+      notes: [
+        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on D (fret+2)
+        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on G (fret+2)
+        { stringOffset: -3, fretOffset: 1, role: 'b3' }   // m3 on B (fret+1)
+      ]
+    },
+    3: { // Root on D - inversion going up
+      // Dm at fret 0: D/0=D, G/2=A(5), B/3=D(R), E/1=F(b3)
+      notes: [
+        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on G (fret+2)
+        { stringOffset: -2, fretOffset: 3, role: 'R' },   // R on B (fret+3)
+        { stringOffset: -3, fretOffset: 1, role: 'b3' }   // m3 on E (fret+1)
+      ]
+    },
+    2: { // Root on G - use shape going up
+      // Gm at fret 0: D/5=G(R), G/3=Bb(b3), B/3=D(5)
+      notes: [
+        { stringOffset: 1, fretOffset: 5, role: 'R' },    // R on D (fret+5, octave down)
+        { stringOffset: 0, fretOffset: 3, role: 'b3' },   // m3 on G (fret+3)
+        { stringOffset: -1, fretOffset: 3, role: '5' }    // P5 on B (fret+3)
+      ]
+    },
+    1: { // Root on B - shifted shape
+      // Cm at fret 1: G/5=C(R), B/4=Eb(b3), E/3=G(5)
+      notes: [
+        { stringOffset: 1, fretOffset: 4, role: 'R' },    // R on G (fret+4)
+        { stringOffset: 0, fretOffset: 3, role: 'b3' },   // m3 on B (fret+3)
+        { stringOffset: -1, fretOffset: 2, role: '5' }    // P5 on E (fret+2)
+      ]
+    },
+    0: { // Root on high E - 1st inversion using D, G, B
+      // Em at fret 0: D/2=E(R), G/0=G(b3), B/0=B(5)
+      notes: [
+        { stringOffset: 3, fretOffset: 2, role: 'R' },    // R on D (fret+2)
+        { stringOffset: 2, fretOffset: 0, role: 'b3' },   // m3 on G (same fret)
+        { stringOffset: 1, fretOffset: 0, role: '5' }     // P5 on B (same fret)
       ]
     }
   };
@@ -332,28 +433,55 @@ const FretboardCore = (function () {
     return html;
   }
 
-  // Calculate triad shape positions
-  function getTriadShapePositions(rootStringIndex, rootFret, triadType) {
-    const shapes = triadType === 'major' ? MAJOR_TRIAD_SHAPES : MINOR_TRIAD_SHAPES;
-    const shape = shapes[rootStringIndex];
+  // Helper to calculate positions from a shape definition
+  function calculatePositions(shape, rootStringIndex, rootFret) {
     if (!shape) return null;
 
     const positions = [];
+    let allValid = true;
+
     for (const note of shape.notes) {
       const stringIndex = rootStringIndex + note.stringOffset;
       const fret = rootFret + note.fretOffset;
 
-      // Validate position is on the fretboard
+      // Check if position is valid
       if (stringIndex >= 0 && stringIndex <= 5 && fret >= 0 && fret <= FRET_COUNT) {
         positions.push({
           stringIndex: stringIndex,
           fret: fret,
           role: note.role
         });
+      } else {
+        allValid = false;
       }
     }
 
-    return positions;
+    return { positions, allValid };
+  }
+
+  // Calculate triad shape positions, using alternative shapes when standard doesn't fit
+  function getTriadShapePositions(rootStringIndex, rootFret, triadType) {
+    const standardShapes = triadType === 'major' ? MAJOR_TRIAD_SHAPES : MINOR_TRIAD_SHAPES;
+    const altShapes = triadType === 'major' ? MAJOR_TRIAD_ALT_SHAPES : MINOR_TRIAD_ALT_SHAPES;
+
+    // Try standard shape first
+    const standardShape = standardShapes[rootStringIndex];
+    const standardResult = calculatePositions(standardShape, rootStringIndex, rootFret);
+
+    if (standardResult && standardResult.allValid && standardResult.positions.length === 3) {
+      return standardResult.positions;
+    }
+
+    // Fall back to alternative shape
+    const altShape = altShapes[rootStringIndex];
+    const altResult = calculatePositions(altShape, rootStringIndex, rootFret);
+
+    if (altResult && altResult.positions.length >= 3) {
+      return altResult.positions;
+    }
+
+    // If neither works fully, return whatever we got from standard (partial shape)
+    return standardResult ? standardResult.positions : [];
   }
 
   return {
