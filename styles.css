@@ -105,29 +105,12 @@ body {
   box-shadow: inset -2px 0 0 rgba(0,0,0,0.25);
 }
 
-/* Per-string horizontal line */
-.string-row {
-  position: relative;
-  display: contents; /* we draw notes inside cells */
-}
-
 .string-label {
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
   color: #333;
-}
-
-.string-line {
-  position: absolute;
-  left: 40px; /* after labels */
-  right: 0;
-  top: 50%;
-  height: 2px;
-  transform: translateY(-50%);
-  background: var(--string);
-  pointer-events: none;
 }
 
 .cell {
@@ -156,6 +139,7 @@ body {
 }
 
 .note:hover { transform: scale(1.05); }
+.note:focus-visible { outline: 2px solid #0066cc; outline-offset: 2px; }
 
 .note .interval { font-size: 11px; font-weight: 700; }
 .note .letter { font-size: 12px; }
@@ -165,6 +149,14 @@ body {
 
 /* Root override keeps yellow highlight readable even for sharps */
 .note.root { background: var(--yellow); color: var(--text); border-color: #444; }
+
+/* Triad shape notes - red outer ring to show notes being played */
+.note.triad-shape {
+  box-shadow: 0 0 0 3px #e53935, 0 0 0 5px rgba(229, 57, 53, 0.3);
+}
+.note.triad-shape.root {
+  box-shadow: 0 0 0 3px #e53935, 0 0 0 5px rgba(229, 57, 53, 0.3);
+}
 
 .ghost {
   opacity: 0.14;
