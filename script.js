@@ -544,7 +544,7 @@ function createFretboard(config) {
     activeRootInfo = null;
     const notes = boardEl.querySelectorAll('.note');
     notes.forEach((btn) => {
-      btn.classList.remove('root', 'triad-shape');
+      btn.classList.remove('root', 'triad-shape', 'triad-related');
       const intervalEl = btn.querySelector('.interval');
       const letterEl = btn.querySelector('.letter');
       const letter = btn.getAttribute('data-note');
@@ -590,26 +590,48 @@ function createFretboard(config) {
     // Get the specific triad shape positions
     const positions = FretboardCore.getTriadShapePositions(rootStringIndex, rootFret, triadType);
 
-    // Ghost all notes first
+    // Define triad intervals based on type
+    const triadIntervals = triadType === 'major' ? new Set([0, 4, 7]) : new Set([0, 3, 7]);
+
+    // Process all notes on the fretboard
     const notes = boardEl.querySelectorAll('.note');
     notes.forEach((btn) => {
       const noteLetter = btn.getAttribute('data-note');
       btn.classList.toggle('sharp', noteLetter && noteLetter.includes('#'));
-      btn.classList.remove('root', 'triad-shape');
+      btn.classList.remove('root', 'triad-shape', 'triad-related');
 
       const intervalEl = btn.querySelector('.interval');
       const letterEl = btn.querySelector('.letter');
-      if (intervalEl) {
-        intervalEl.textContent = '';
-        intervalEl.classList.add('ghost');
-      }
-      if (letterEl) {
-        letterEl.textContent = noteLetter || '';
-        letterEl.classList.add('ghost');
+
+      // Calculate interval from root
+      const intervalSteps = FretboardCore.getIntervalSteps(noteLetter, rootLetter);
+      const isTriadNote = triadIntervals.has(intervalSteps);
+
+      if (isTriadNote) {
+        // This note is part of the triad - highlight with bold text
+        btn.classList.add('triad-related');
+        if (letterEl) {
+          letterEl.textContent = noteLetter || '';
+          letterEl.classList.remove('ghost');
+        }
+        if (intervalEl) {
+          intervalEl.textContent = '';
+          intervalEl.classList.add('ghost');
+        }
+      } else {
+        // Ghost non-triad notes
+        if (intervalEl) {
+          intervalEl.textContent = '';
+          intervalEl.classList.add('ghost');
+        }
+        if (letterEl) {
+          letterEl.textContent = noteLetter || '';
+          letterEl.classList.add('ghost');
+        }
       }
     });
 
-    // Highlight the specific triad shape notes
+    // Highlight the specific triad shape notes with red circles
     if (positions) {
       positions.forEach((pos) => {
         const btn = boardEl.querySelector(
@@ -625,6 +647,7 @@ function createFretboard(config) {
             btn.classList.add('root');
           }
 
+          // Show the role label for shape notes
           if (intervalEl) {
             intervalEl.textContent = pos.role;
             intervalEl.classList.remove('ghost');
