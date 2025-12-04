@@ -1,51 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Guitar Fretboard Intervals</title>
-    <link rel="stylesheet" href="styles.css?v=7" />
-  </head>
-  <body>
-    <main class="app">
-      <h2>Guitar Fretboard Intervals (Standard Tuning)</h2>
-      <div id="board-container" class="board-container">
-        <div id="fret-numbers" class="fret-numbers"></div>
-        <div id="fret-markers" class="fret-markers"></div>
-        <div id="fretboard" class="fretboard" aria-label="Guitar fretboard"></div>
-        <div id="fret-numbers-bottom" class="fret-numbers"></div>
-        <div id="fret-markers-bottom" class="fret-markers"></div>
-      </div>
-      <p class="hint">Click any note to hear it and see intervals relative to it. Click the same note again or press Esc to clear.</p>
-    </main>
 
-    <!-- Duplicate app instance below: Major Triads -->
-    <main class="app">
-      <h2>Guitar Major Triads (Standard Tuning)</h2>
-      <div id="board-container-2" class="board-container" data-mode="triad-major">
-        <div id="fret-numbers-2" class="fret-numbers"></div>
-        <div id="fret-markers-2" class="fret-markers"></div>
-        <div id="fretboard-2" class="fretboard" aria-label="Guitar fretboard (Major Triads)"></div>
-        <div id="fret-numbers-bottom-2" class="fret-numbers"></div>
-        <div id="fret-markers-bottom-2" class="fret-markers"></div>
-      </div>
-      <p class="hint">Click any note to hear it and show its Major Triad (R, 3, 5). Click again or press Esc to clear.</p>
-    </main>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Guitar Fretboard Intervals</title>
+  <link rel="stylesheet" href="styles.css?v=7" />
+</head>
 
-    <!-- Duplicate of the first app below the second: Minor Triads -->
-    <main class="app">
-      <h2>Guitar Minor Triads (Standard Tuning)</h2>
-      <div id="board-container-3" class="board-container" data-mode="triad-minor">
-        <div id="fret-numbers-3" class="fret-numbers"></div>
-        <div id="fret-markers-3" class="fret-markers"></div>
-        <div id="fretboard-3" class="fretboard" aria-label="Guitar fretboard (Minor Triads)"></div>
-        <div id="fret-numbers-bottom-3" class="fret-numbers"></div>
-        <div id="fret-markers-bottom-3" class="fret-markers"></div>
-      </div>
-      <p class="hint">Click any note to hear it and show its Minor Triad (R, b3, 5). Click again or press Esc to clear.</p>
-    </main>
-    <script src="script.js?v=8"></script>
-  </body>
+<body>
+  <main class="app">
+    <h2>Guitar Fretboard Intervals (Standard Tuning)</h2>
+    <div id="board-container" class="board-container">
+      <div id="fret-numbers" class="fret-numbers"></div>
+      <div id="fret-markers" class="fret-markers"></div>
+      <div id="fretboard" class="fretboard" aria-label="Guitar fretboard"></div>
+      <div id="fret-numbers-bottom" class="fret-numbers"></div>
+      <div id="fret-markers-bottom" class="fret-markers"></div>
+    </div>
+    <p class="hint">Click any note to hear it and see intervals relative to it. Click the same note again or press Esc
+      to clear.</p>
+  </main>
+
+  <!-- Duplicate app instance below: Major Triads -->
+  <main class="app">
+    <h2>Guitar Major Triads (Standard Tuning)</h2>
+    <div id="board-container-2" class="board-container" data-mode="triad-major">
+      <div id="fret-numbers-2" class="fret-numbers"></div>
+      <div id="fret-markers-2" class="fret-markers"></div>
+      <div id="fretboard-2" class="fretboard" aria-label="Guitar fretboard (Major Triads)"></div>
+      <div id="fret-numbers-bottom-2" class="fret-numbers"></div>
+      <div id="fret-markers-bottom-2" class="fret-markers"></div>
+    </div>
+    <p class="hint">Click any note to hear it and show its Major Triad (R, 3, 5). Click again or press Esc to clear.</p>
+  </main>
+
+  <!-- Duplicate of the first app below the second: Minor Triads -->
+  <main class="app">
+    <h2>Guitar Minor Triads (Standard Tuning)</h2>
+    <div id="board-container-3" class="board-container" data-mode="triad-minor">
+      <div id="fret-numbers-3" class="fret-numbers"></div>
+      <div id="fret-markers-3" class="fret-markers"></div>
+      <div id="fretboard-3" class="fretboard" aria-label="Guitar fretboard (Minor Triads)"></div>
+      <div id="fret-numbers-bottom-3" class="fret-numbers"></div>
+      <div id="fret-markers-bottom-3" class="fret-markers"></div>
+    </div>
+    <p class="hint">Click any note to hear it and show its Minor Triad (R, b3, 5). Click again or press Esc to clear.
+    </p>
+  </main>
+  <script src="script.js?v=8"></script>
+</body>
+
 </html>
-
-

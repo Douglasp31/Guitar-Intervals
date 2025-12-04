@@ -11,7 +11,9 @@
   --yellow: #ffd54d;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -40,12 +42,17 @@ body {
   gap: 0;
   font-size: 12px;
   color: #444;
+  pointer-events: none;
+  /* Prevent blocking clicks */
 }
+
 .fret-markers {
   display: grid;
   grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
   align-items: center;
   height: 24px;
+  pointer-events: none;
+  /* Prevent blocking clicks */
 }
 
 .fret-markers .dot {
@@ -62,7 +69,10 @@ body {
   column-gap: 6px;
 }
 
-.fret-markers .double .dot { width: 7px; height: 7px; }
+.fret-markers .double .dot {
+  width: 7px;
+  height: 7px;
+}
 
 
 .fret-numbers div {
@@ -73,12 +83,15 @@ body {
 .fretboard {
   position: relative;
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr); /* left labels + nut + 22 frets */
+  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  /* left labels + nut + 22 frets */
   grid-template-rows: repeat(var(--string-count), 64px);
   gap: 0;
   background: linear-gradient(#d3cfc8, #dad5cd);
   border-radius: 6px;
   overflow: hidden;
+  z-index: 5;
+  /* Ensure fretboard is above markers/numbers if they overlap */
 }
 
 /* Vertical frets */
@@ -87,10 +100,11 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 40px; /* start after string labels */
+  left: 40px;
+  /* start after string labels */
   right: 0;
   background-image:
-    linear-gradient(90deg, rgba(0,0,0,0.12) 0, rgba(0,0,0,0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0, rgba(0, 0, 0, 0.12) 1px, transparent 1px),
     linear-gradient(#0000, #0000);
   background-size: calc(100% / (var(--fret-count) + 1)) 100%, 100% 100%;
   background-position: 0 0;
@@ -102,13 +116,14 @@ body {
   grid-row: 1 / span var(--string-count);
   grid-column: 2 / 3;
   background: #bbb4aa;
-  box-shadow: inset -2px 0 0 rgba(0,0,0,0.25);
+  box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.25);
 }
 
 /* Per-string horizontal line */
 .string-row {
   position: relative;
-  display: contents; /* we draw notes inside cells */
+  display: contents;
+  /* we draw notes inside cells */
 }
 
 .string-label {
@@ -121,7 +136,8 @@ body {
 
 .string-line {
   position: absolute;
-  left: 40px; /* after labels */
+  left: 40px;
+  /* after labels */
   right: 0;
   top: 50%;
   height: 2px;
@@ -135,6 +151,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+
+.cell:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  /* Visual feedback for clickability */
 }
 
 .note {
@@ -151,20 +173,49 @@ body {
   text-align: center;
   line-height: 1;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   transition: transform 80ms ease, box-shadow 80ms ease, background-color 120ms ease;
+  position: relative;
+  /* Ensure z-index works */
+  z-index: 10;
+  /* Ensure note is above other elements */
 }
 
-.note:hover { transform: scale(1.05); }
+.note:hover {
+  transform: scale(1.05);
+}
 
-.note .interval { font-size: 11px; font-weight: 700; }
-.note .letter { font-size: 12px; }
+.note .interval {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.note .letter {
+  font-size: 12px;
+}
 
 /* Sharps: black fill, white text */
-.note.sharp { background: #111; border-color: #000; color: #fff; }
+.note.sharp {
+  background: #111;
+  border-color: #000;
+  color: #fff;
+}
 
 /* Root override keeps yellow highlight readable even for sharps */
-.note.root { background: var(--yellow); color: var(--text); border-color: #444; }
+.note.root {
+  background: var(--yellow);
+  color: var(--text);
+  border-color: #444;
+}
+
+/* Active triad highlight */
+.note.active-triad {
+  border-color: #ff0000;
+  border-width: 2px;
+  box-shadow: 0 0 0 1px #ff0000;
+  /* Extra visibility */
+}
 
 .ghost {
   opacity: 0.14;
@@ -176,8 +227,11 @@ body {
 }
 
 @media (max-width: 900px) {
-  :root { --note-size: 30px; }
-  .fretboard { grid-template-rows: repeat(var(--string-count), 56px); }
+  :root {
+    --note-size: 30px;
+  }
+
+  .fretboard {
+    grid-template-rows: repeat(var(--string-count), 56px);
+  }
 }
-
-
