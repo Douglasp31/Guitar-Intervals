@@ -38,7 +38,7 @@ body {
 
 .fret-numbers {
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  grid-template-columns: 40px 1fr var(--nut-width) repeat(22, 1fr);
   gap: 0;
   font-size: 12px;
   color: #444;
@@ -48,7 +48,7 @@ body {
 
 .fret-markers {
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  grid-template-columns: 40px 1fr var(--nut-width) repeat(22, 1fr);
   align-items: center;
   height: 24px;
   pointer-events: none;
@@ -83,8 +83,8 @@ body {
 .fretboard {
   position: relative;
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
-  /* left labels + nut + 22 frets */
+  grid-template-columns: 40px 1fr var(--nut-width) repeat(22, 1fr);
+  /* left labels + fret 0 + nut + 22 frets */
   grid-template-rows: repeat(var(--string-count), 64px);
   gap: 0;
   background: linear-gradient(#d3cfc8, #dad5cd);
@@ -100,13 +100,12 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 40px;
-  /* start after string labels */
-  right: 0;
+  grid-column: 4 / -1;
+  /* Start after nut (col 3) */
   background-image:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0, rgba(0, 0, 0, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, transparent, transparent calc(100% - 1px), rgba(0, 0, 0, 0.12) calc(100% - 1px), rgba(0, 0, 0, 0.12) 100%),
     linear-gradient(#0000, #0000);
-  background-size: calc(100% / (var(--fret-count) + 1)) 100%, 100% 100%;
+  background-size: calc(100% / 22) 100%, 100% 100%;
   background-position: 0 0;
   pointer-events: none;
 }
@@ -114,7 +113,8 @@ body {
 /* Nut */
 .nut {
   grid-row: 1 / span var(--string-count);
-  grid-column: 2 / 3;
+  grid-column: 3 / 4;
+  /* Nut is now in column 3 */
   background: #bbb4aa;
   box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.25);
 }

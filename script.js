@@ -322,9 +322,11 @@ const GuitarAudio = (function () {
   function renderFretNumbers(targetEl) {
     let html = '';
     html += `<div style="grid-column:1"></div>`; // label spacer
-    html += `<div style="grid-column:2"></div>`; // nut spacer
+    // Nut is at col 3, so no spacer needed here if we place items explicitly
+
     for (let f = 0; f <= FRET_COUNT; f += 1) {
-      const col = 3 + f; // offset by label + nut
+      // Grid: [Label(1)] [Fret0(2)] [Nut(3)] [Fret1(4)] ...
+      const col = f === 0 ? 2 : 3 + f;
       html += `<div style="grid-column:${col}">${f}</div>`;
     }
     targetEl.innerHTML = html;
@@ -336,7 +338,7 @@ const GuitarAudio = (function () {
     let html = '';
     // empty columns are implicit; only place dots where needed
     for (let f = 0; f <= FRET_COUNT; f += 1) {
-      const col = 3 + f; // grid column matching the fret number
+      const col = f === 0 ? 2 : 3 + f;
       if (singleDotFrets.has(f)) {
         html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
       } else if (f === 12) {
