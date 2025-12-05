@@ -94,29 +94,63 @@ body {
   /* Ensure fretboard is above markers/numbers if they overlap */
 }
 
-/* Vertical frets */
+/* Shared grid lines for numbers, markers, and fretboard */
+.fret-numbers,
+.fret-markers {
+  position: relative;
+}
+
+/* Remove pseudo-element gradients */
+.fret-numbers::before,
+.fret-markers::before,
 .fretboard::before {
+  display: none;
+}
+
+/* Add vertical lines via borders on grid items */
+.fret-num-cell,
+.fret-marker-cell,
+.cell {
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Specific styling for marker cells to position dots */
+.fret-marker-cell {
+  height: 100%;
+}
+
+/* Nut styling */
+.nut {
+  grid-row: 1 / span var(--string-count);
+  grid-column: 3 / 4;
+  background: #bbb4aa;
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+  /* Right border of Nut */
+  box-shadow: inset 2px 0 0 rgba(0, 0, 0, 0.2);
+  /* Left inner shadow */
+}
+
+/* Nut cell in markers/numbers */
+.nut-cell {
+  background: #bbb4aa;
+  /* Match nut color */
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+/* Line at start of Fret 0 (between labels and Fret 0) */
+.fretboard::after {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  grid-column: 4 / -1;
-  /* Start after nut (col 3) */
-  background-image:
-    linear-gradient(90deg, transparent, transparent calc(100% - 1px), rgba(0, 0, 0, 0.12) calc(100% - 1px), rgba(0, 0, 0, 0.12) 100%),
-    linear-gradient(#0000, #0000);
-  background-size: calc(100% / 22) 100%, 100% 100%;
-  background-position: 0 0;
+  left: 40px;
+  /* At the end of labels */
+  width: 1px;
+  background: rgba(0, 0, 0, 0.12);
   pointer-events: none;
-}
-
-/* Nut */
-.nut {
-  grid-row: 1 / span var(--string-count);
-  grid-column: 3 / 4;
-  /* Nut is now in column 3 */
-  background: #bbb4aa;
-  box-shadow: inset -2px 0 0 rgba(0, 0, 0, 0.25);
 }
 
 /* Per-string horizontal line */

@@ -322,12 +322,17 @@ const GuitarAudio = (function () {
   function renderFretNumbers(targetEl) {
     let html = '';
     html += `<div style="grid-column:1"></div>`; // label spacer
-    // Nut is at col 3, so no spacer needed here if we place items explicitly
 
-    for (let f = 0; f <= FRET_COUNT; f += 1) {
-      // Grid: [Label(1)] [Fret0(2)] [Nut(3)] [Fret1(4)] ...
-      const col = f === 0 ? 2 : 3 + f;
-      html += `<div style="grid-column:${col}">${f}</div>`;
+    // Fret 0
+    html += `<div class="fret-num-cell" style="grid-column:2">0</div>`;
+
+    // Nut
+    html += `<div class="fret-num-cell nut-cell" style="grid-column:3"></div>`;
+
+    // Frets 1-22
+    for (let f = 1; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      html += `<div class="fret-num-cell" style="grid-column:${col}">${f}</div>`;
     }
     targetEl.innerHTML = html;
   }
@@ -336,14 +341,26 @@ const GuitarAudio = (function () {
   function renderFretMarkers(targetEl) {
     const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
     let html = '';
-    // empty columns are implicit; only place dots where needed
-    for (let f = 0; f <= FRET_COUNT; f += 1) {
-      const col = f === 0 ? 2 : 3 + f;
+
+    // Label spacer
+    html += `<div style="grid-column:1"></div>`;
+
+    // Fret 0
+    html += `<div class="fret-marker-cell" style="grid-column:2"></div>`;
+
+    // Nut
+    html += `<div class="fret-marker-cell nut-cell" style="grid-column:3"></div>`;
+
+    // Frets 1-22
+    for (let f = 1; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      let content = '';
       if (singleDotFrets.has(f)) {
-        html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
+        content = `<div class="dot"></div>`;
       } else if (f === 12) {
-        html += `<div class="double" style="grid-column:${col}" aria-hidden="true"><div class="dot"></div><div class="dot"></div></div>`;
+        content = `<div class="double"><div class="dot"></div><div class="dot"></div></div>`;
       }
+      html += `<div class="fret-marker-cell" style="grid-column:${col}">${content}</div>`;
     }
     targetEl.innerHTML = html;
   }
