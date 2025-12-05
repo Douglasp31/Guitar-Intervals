@@ -252,7 +252,9 @@ body {
 }
 
 .ghost {
-  opacity: 0.14;
+  opacity: 0;
+  pointer-events: none;
+  /* Make unclickable if hidden */
 }
 
 .hint {

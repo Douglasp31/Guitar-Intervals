@@ -477,24 +477,25 @@ const GuitarAudio = (function () {
       if (selectedScale) {
         if (isScaleNote) {
           btn.classList.add('active-triad'); // Red outline for scale notes
+          btn.classList.remove('ghost'); // Show note
           // Ensure visible
           intervalEl && intervalEl.classList.remove("ghost");
           letterEl && letterEl.classList.remove("ghost");
         } else {
           btn.classList.remove('active-triad');
-          // Ghost non-scale notes
-          intervalEl && intervalEl.classList.add("ghost");
-          letterEl && letterEl.classList.add("ghost");
+          btn.classList.add('ghost'); // Hide entire note
         }
       } else {
         // Default behavior: show all intervals
         btn.classList.remove('active-triad');
+        btn.classList.remove('ghost');
         intervalEl && intervalEl.classList.remove("ghost");
         letterEl && letterEl.classList.remove("ghost");
       }
 
       // Always ensure root is fully visible
       if (intervalSteps === 0) {
+        btn.classList.remove('ghost');
         intervalEl && intervalEl.classList.remove("ghost");
         letterEl && letterEl.classList.remove("ghost");
         // Optional: give root a red outline too if it's part of scale (it always is)
