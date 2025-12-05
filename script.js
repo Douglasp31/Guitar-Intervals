@@ -416,14 +416,22 @@ const GuitarAudio = (function () {
 
   buildBoard();
 
-  // Handle clicks to compute and display intervals
+  // Scale definitions (intervals in semitones from root)
+  const SCALES = {
+    'major': new Set([0, 2, 4, 5, 7, 9, 11]),
+    'minor': new Set([0, 2, 3, 5, 7, 8, 10]),
+    'major-pentatonic': new Set([0, 2, 4, 7, 9]),
+    'minor-pentatonic': new Set([0, 3, 5, 7, 10])
+  };
+
   let activeRoot = null; // { letter: string }
+  let selectedScale = null; // 'major', 'minor', etc. or null
 
   function clearIntervals() {
     activeRoot = null;
     const notes = boardEl.querySelectorAll(".note");
     notes.forEach((btn) => {
-      btn.classList.remove("root");
+      btn.classList.remove("root", "active-triad");
       const intervalEl = btn.querySelector(".interval");
       const letterEl = btn.querySelector(".letter");
       const letter = btn.getAttribute("data-note");
@@ -454,11 +462,44 @@ const GuitarAudio = (function () {
       if (intervalEl) intervalEl.textContent = intervalName;
       if (letterEl) letterEl.textContent = noteLetter || "";
 
+      // Highlight root
       btn.classList.toggle("root", intervalSteps === 0);
 
-      // Ensure both parts are visible
-      intervalEl && intervalEl.classList.remove("ghost");
-      letterEl && letterEl.classList.remove("ghost");
+      // Scale highlighting logic
+      let isScaleNote = false;
+      if (selectedScale && SCALES[selectedScale]) {
+        if (SCALES[selectedScale].has(intervalSteps)) {
+          isScaleNote = true;
+        }
+      }
+
+      // Apply highlighting
+      if (selectedScale) {
+        if (isScaleNote) {
+          btn.classList.add('active-triad'); // Red outline for scale notes
+          // Ensure visible
+          intervalEl && intervalEl.classList.remove("ghost");
+          letterEl && letterEl.classList.remove("ghost");
+        } else {
+          btn.classList.remove('active-triad');
+          // Ghost non-scale notes
+          intervalEl && intervalEl.classList.add("ghost");
+          letterEl && letterEl.classList.add("ghost");
+        }
+      } else {
+        // Default behavior: show all intervals
+        btn.classList.remove('active-triad');
+        intervalEl && intervalEl.classList.remove("ghost");
+        letterEl && letterEl.classList.remove("ghost");
+      }
+
+      // Always ensure root is fully visible
+      if (intervalSteps === 0) {
+        intervalEl && intervalEl.classList.remove("ghost");
+        letterEl && letterEl.classList.remove("ghost");
+        // Optional: give root a red outline too if it's part of scale (it always is)
+        if (selectedScale) btn.classList.add('active-triad');
+      }
     });
   }
 
@@ -481,6 +522,25 @@ const GuitarAudio = (function () {
       activeRoot = note;
       showIntervals(note);
     }
+  });
+
+  // Scale selection buttons
+  const scaleButtons = document.querySelectorAll('.btn-scale');
+  scaleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Update active state
+      scaleButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Set scale
+      const scale = btn.dataset.scale;
+      selectedScale = scale === 'none' ? null : scale;
+
+      // Re-render if root is selected
+      if (activeRoot) {
+        showIntervals(activeRoot);
+      }
+    });
   });
 
   // Keyboard clear

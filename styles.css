@@ -269,3 +269,46 @@ body {
     grid-template-rows: repeat(var(--string-count), 56px);
   }
 }
+
+/* Scale Selection Controls */
+.controls {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #444;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-scale {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.btn-scale:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.btn-scale.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
