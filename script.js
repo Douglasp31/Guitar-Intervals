@@ -698,12 +698,12 @@ const GuitarAudio = (function () {
         letterEl && letterEl.classList.remove('ghost');
         btn.classList.toggle('root', intervalSteps === 0);
 
-        // Only apply active-triad (red outline) to the specific 3 notes being played
         if (positionKeys.has(posKey)) {
           btn.classList.add('active-triad');
         } else {
           btn.classList.remove('active-triad');
         }
+        btn.classList.remove('ghost'); // Show note
       } else {
         if (intervalEl) intervalEl.textContent = '';
         if (letterEl) letterEl.textContent = noteLetter || '';
@@ -711,6 +711,7 @@ const GuitarAudio = (function () {
         letterEl && letterEl.classList.add('ghost');
         btn.classList.remove('root');
         btn.classList.remove('active-triad');
+        btn.classList.add('ghost'); // Hide entire note
       }
     });
   }
@@ -894,6 +895,7 @@ const GuitarAudio = (function () {
         } else {
           btn.classList.remove('active-triad');
         }
+        btn.classList.remove('ghost'); // Show note
       } else {
         btn.classList.remove('active-triad');
         if (intervalEl) intervalEl.textContent = '';
@@ -901,6 +903,7 @@ const GuitarAudio = (function () {
         intervalEl && intervalEl.classList.add('ghost');
         letterEl && letterEl.classList.add('ghost');
         btn.classList.remove('root');
+        btn.classList.add('ghost'); // Hide entire note
       }
     });
   }
