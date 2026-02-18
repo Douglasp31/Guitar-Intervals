@@ -9,6 +9,16 @@
 const GuitarAudio = (function () {
   let audioCtx = null;
 
+  // Open string frequencies in Hz (standard tuning, low to high)
+  const STRING_FREQUENCIES = {
+    'E2': 82.41,   // Low E (6th string)
+    'A2': 110.00,  // A (5th string)
+    'D3': 146.83,  // D (4th string)
+    'G3': 196.00,  // G (3rd string)
+    'B3': 246.94,  // B (2nd string)
+    'E4': 329.63   // High E (1st string)
+  };
+
   // Map string letter to base frequency (strings from low to high)
   const STRING_BASE_FREQ = {
     'E-low': 82.41,
@@ -19,8 +29,8 @@ const GuitarAudio = (function () {
     'E-high': 329.63
   };
 
-  // String index to frequency mapping (index 0 = high E, index 5 = low E)
-  const STRING_INDEX_FREQ = [329.63, 246.94, 196.00, 146.83, 110.00, 82.41];
+  // String order for determining which E string (low or high)
+  const STRING_ORDER = ['E-low', 'A', 'D', 'G', 'B', 'E-high'];
 
   // Initialize audio context on first user interaction
   function initAudio() {
@@ -48,12 +58,6 @@ const GuitarAudio = (function () {
     }
 
     // Calculate frequency: base * 2^(fret/12)
-    return baseFreq * Math.pow(2, fret / 12);
-  }
-
-  // Calculate frequency from string index and fret
-  function getFrequencyByIndex(stringIndex, fret) {
-    const baseFreq = STRING_INDEX_FREQ[stringIndex];
     return baseFreq * Math.pow(2, fret / 12);
   }
 
@@ -120,258 +124,252 @@ const GuitarAudio = (function () {
     oscillator.stop(startTime + attackTime + decayTime + releaseTime + 0.1);
   }
 
-  // Play specific triad notes with strum effect
-  // notes: array of {stringIndex, fret} objects
-  function playTriadNotes(notes) {
+  // Play a triad (3 notes) with slight strum delay
+  // rootFrequency: the actual frequency of the root note clicked
+  // intervals: array of semitone offsets from root, e.g., [0, 4, 7] for major triad
+  function playTriad(rootFrequency, intervals) {
     initAudio();
-    // Sort by string index descending (low strings first for strum)
-    const sorted = [...notes].sort((a, b) => b.stringIndex - a.stringIndex);
-    sorted.forEach((note, index) => {
-      const freq = getFrequencyByIndex(note.stringIndex, note.fret);
-      const delay = index * 0.08; // 80ms between each note
+    console.log('playTriad called with rootFrequency:', rootFrequency, 'intervals:', intervals);
+
+    // Play each note of the triad with slight delay for strum effect
+    intervals.forEach((semitones, index) => {
+      const freq = rootFrequency * Math.pow(2, semitones / 12);
+      console.log('Playing freq:', freq, 'semitones:', semitones, 'delay:', index * 0.08);
+      const delay = index * 0.08; // 80ms between each note for strum effect
       playFrequency(freq, delay);
     });
   }
 
+  // Standard playable triad shapes (CAGED system)
+  // Ensures 3 notes on different strings that form a playable chord
+  function getTriadNotes(rootStringIndex, rootFret, isMajor) {
+    const notes = [{ stringIndex: rootStringIndex, fret: rootFret, interval: 'R' }];
+    const t = isMajor ? '3' : 'b3';
+
+    // Helper to add note if valid
+    const add = (s, f, i) => {
+      if (f >= 0 && f <= 22) notes.push({ stringIndex: s, fret: f, interval: i });
+    };
+
+    switch (rootStringIndex) {
+      case 5: // Root on Low E
+        // Standard: G-shape (R on E, 3 on A, 5 on D) - Backwards
+        // Maj: R(f), 3(f-1), 5(f-3). Min: R(f), b3(f-2), 5(f-3)
+        if (rootFret >= 3) {
+          add(4, rootFret - (isMajor ? 1 : 2), t);
+          add(3, rootFret - 3, '5');
+        } else {
+          // Low frets/Open: Use E shape (R on E, 5 on A, 3 on G)
+          // E Maj: E(0), B(2 on A), G#(1 on G)
+          add(4, rootFret + 2, '5');
+          add(2, rootFret + (isMajor ? 1 : 0), t);
+        }
+        break;
+
+      case 4: // Root on A
+        // Standard: C-shape (R on A, 3 on D, 5 on G) - Backwards
+        // Maj: R(f), 3(f-1), 5(f-3). Min: R(f), b3(f-2), 5(f-3)
+        if (rootFret >= 3) {
+          add(3, rootFret - (isMajor ? 1 : 2), t);
+          add(2, rootFret - 3, '5');
+        } else {
+          // Low frets/Open: Use A shape (R on A, 5 on D, 3 on B)
+          // A Maj: A(0), E(2 on D), C#(2 on B)
+          add(3, rootFret + 2, '5');
+          add(1, rootFret + (isMajor ? 2 : 1), t);
+        }
+        break;
+
+      case 3: // Root on D
+        // Standard: F-shape (R on D, 3 on G, 5 on B) - Backwards
+        // Maj: R(f), 3(f-1), 5(f-2). Min: R(f), b3(f-2), 5(f-2)
+        if (rootFret >= 2) {
+          add(2, rootFret - (isMajor ? 1 : 2), t);
+          add(1, rootFret - 2, '5');
+        } else {
+          // Low frets/Open: Use D shape (R on D, 5 on G, 3 on e)
+          // D Maj: D(0), A(2 on G), F#(2 on e)
+          add(2, rootFret + 2, '5');
+          add(0, rootFret + (isMajor ? 2 : 1), t);
+        }
+        break;
+
+      case 2: // Root on G
+        // Standard: A-shape top (R on G, 3 on B, 5 on e) - Backwards
+        // Maj: R(f), 3(f), 5(f-2). Min: R(f), b3(f-1), 5(f-2)
+        if (rootFret >= 2) {
+          add(1, rootFret - (isMajor ? 0 : 1), t);
+          add(0, rootFret - 2, '5');
+        } else {
+          // Low frets/Open: Use forward shape
+          // G Maj: G(0), B(0 on B), D(3 on B) -> 2 notes on B string!
+          // Better: G(0), B(0 on B), D(3 on B) is bad.
+          // Use: G(0), D(3 on B), B(4 on G)? No.
+          // Use: G(0), B(0 on B), G(3 on e)? No 5th.
+          // Use: G(0), D(0 on D - lower), B(0 on B). R-5-3.
+          add(3, rootFret, '5'); // D string same fret
+          add(1, rootFret - (isMajor ? 0 : 1), t); // B string
+        }
+        break;
+
+      case 1: // Root on B
+        // Standard: D-shape top (R on B, 5 on G, 3 on e) - Backwards
+        // Maj: R(f), 5(f-1), 3(f-1). Min: R(f), 5(f-1), b3(f-2)
+        if (rootFret >= 2) {
+          add(2, rootFret - 1, '5');
+          add(0, rootFret - (isMajor ? 1 : 2), t);
+        } else {
+          // Low frets/Open: B Maj -> B(0), F#(2 on e)? No, F# is 2 on e. D# is 4 on B.
+          // Use: B(0), F#(4 on D), D#(4 on B)? No.
+          // Use: B(0), D#(1 on D), F#(2 on e)? No.
+          // Use: B(0), F#(3 on D), D#(4 on B)?
+          // Let's use forward shape: R on B, 3 on G, 5 on D?
+          // B Maj: B(0), D#(8 on G), F#(9 on A). No.
+          // B Maj: B(0), D#(4 on B), F#(2 on e).
+          // Let's use: R(B), 5(e), 3(G)?
+          // B(0), F#(2 on e), D#(8 on G).
+          // Let's use: R(B), 3(e), 5(e)?
+          // Standard B minor open: x-2-4-4-3-2.
+          // Triad: B(0), D(3 on B), F#(2 on e). 2 notes on B.
+          // Try: B(0), F#(2 on e), D(3 on B).
+          // Try: B(0), D(0 on D), F#(something).
+          // Let's use the D-shape top but shift for open?
+          // R(B,0), 5(G, -1 -> impossible), 3(e, -1 -> impossible).
+          // Use forward: B(0), D#(4 on B), F#(2 on e).
+          // Use: B(0), D#(1 on D - no, D# is 1 on D), F#(2 on e).
+          // D string 1 is D#. B string 0 is B. e string 2 is F#.
+          // R-3-5. D#-B-F#. Inversion.
+          add(3, rootFret + 1, t); // D# on D string
+          add(0, rootFret + 2, '5'); // F# on e string
+        }
+        break;
+
+      case 0: // Root on High E
+        // Standard: E-shape top (R on e, 5 on B, 3 on G) - Forward
+        // Maj: R(f), 5(f), 3(f+1). Min: R(f), 5(f), b3(f)
+        add(1, rootFret, '5');
+        add(2, rootFret + (isMajor ? 1 : 0), t);
+        break;
+    }
+
+    return notes.filter(n => n.fret >= 0 && n.fret <= 22);
+  }
+
   return {
     playNote: playNote,
-    playTriadNotes: playTriadNotes,
+    playTriad: playTriad,
     getFrequency: getFrequency,
-    getFrequencyByIndex: getFrequencyByIndex,
-    initAudio: initAudio
+    initAudio: initAudio,
+    getTriadNotes: getTriadNotes
   };
 })();
 
 // ============================================
-// Shared Constants and Utilities
+// Fretboard App 1: Intervals
 // ============================================
-const FretboardCore = (function () {
-  const NOTE_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const INTERVAL_BY_STEPS = ["U", "m2", "M2", "m3", "M3", "P4", "TT", "P5", "m6", "M6", "m7", "M7"];
-  const STRINGS_LOW_TO_HIGH = ["E", "A", "D", "G", "B", "E"];
-  const FRET_COUNT = 22;
-  const SINGLE_DOT_FRETS = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
+(function () {
+  /**
+   * Musical data
+   */
+  const NOTE_ORDER = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
 
-  // Standard triad shapes for each root string position
-  // These are closed-voicing triads used by professional guitarists
-  // stringIndex: 0=high E, 1=B, 2=G, 3=D, 4=A, 5=low E
-  // Each shape defines: notes array with {stringOffset, fretOffset, role}
-  // stringOffset: negative = toward high E, positive = toward low E
-  // fretOffset: relative to root fret
-  //
-  // Tuning intervals: E-A=5, A-D=5, D-G=5, G-B=4, B-E=5 semitones
-  // Major triad: R=0, M3=4, P5=7 semitones
-  // Minor triad: R=0, m3=3, P5=7 semitones
+  // Interval names by semitone distance (0..11)
+  const INTERVAL_BY_STEPS = [
+    "U",
+    "m2",
+    "M2",
+    "m3",
+    "M3",
+    "P4",
+    "TT",
+    "P5",
+    "m6",
+    "M6",
+    "m7",
+    "M7",
+  ];
 
-  const MAJOR_TRIAD_SHAPES = {
-    5: { // Root on low E (index 5) - uses strings E, A, D
-      // G major at fret 3: E/3=G, A/2=B(3), D/0=D(5)
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },   // Root on low E
-        { stringOffset: -1, fretOffset: -1, role: '3' }, // M3 on A (1 fret lower)
-        { stringOffset: -2, fretOffset: -3, role: '5' }  // P5 on D (3 frets lower)
-      ]
-    },
-    4: { // Root on A (index 4) - uses strings A, D, G
-      // C major at fret 3: A/3=C, D/2=E(3), G/0=G(5)
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },   // Root on A
-        { stringOffset: -1, fretOffset: -1, role: '3' }, // M3 on D (1 fret lower)
-        { stringOffset: -2, fretOffset: -3, role: '5' }  // P5 on G (3 frets lower)
-      ]
-    },
-    3: { // Root on D (index 3) - uses strings D, G, B
-      // F major at fret 3: D/3=F, G/2=A(3), B/1=C(5)
-      // G-B is M3 (4 semitones), so offset changes
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },   // Root on D
-        { stringOffset: -1, fretOffset: -1, role: '3' }, // M3 on G (1 fret lower)
-        { stringOffset: -2, fretOffset: -2, role: '5' }  // P5 on B (2 frets lower due to G-B=M3)
-      ]
-    },
-    2: { // Root on G (index 2) - uses strings G, B, high E
-      // Bb major at fret 3: G/3=Bb, B/3=D(3), E/1=F(5)
-      // G-B is M3, so 3rd is at same fret; B-E is P4
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },   // Root on G
-        { stringOffset: -1, fretOffset: 0, role: '3' },  // M3 on B (same fret)
-        { stringOffset: -2, fretOffset: -2, role: '5' }  // P5 on high E (2 frets lower)
-      ]
-    },
-    1: { // Root on B (index 1) - uses strings G, B, high E
-      // C at fret 1: B/1=C, then need E(3) and G(5)
-      // G/0=G(5), E/0=E(3)
-      notes: [
-        { stringOffset: 1, fretOffset: -1, role: '5' },  // P5 on G (1 fret lower)
-        { stringOffset: 0, fretOffset: 0, role: 'R' },   // Root on B
-        { stringOffset: -1, fretOffset: -1, role: '3' }  // M3 on high E (1 fret lower)
-      ]
-    },
-    0: { // Root on high E (index 0) - uses strings D, G, B
-      // G at fret 3 on high E: need B(3) and D(5)
-      // B/0=B(3), D/0=D(5), G/0=G(R octave down)
-      notes: [
-        { stringOffset: 3, fretOffset: -3, role: '5' },  // P5 on D
-        { stringOffset: 2, fretOffset: -3, role: 'R' },  // Root on G (octave down)
-        { stringOffset: 1, fretOffset: -3, role: '3' }   // M3 on B
-      ]
+  // Standard tuning string notes from bottom to top: E, A, D, G, B, E
+  const STRINGS_LOW_TO_HIGH = ["E", "A", "D", "G", "B", "E"]; // low to high
+
+  // UI constants
+  const FRET_COUNT = 22; // frets 0-22 (23 positions total including open string)
+
+  // DOM
+  const boardEl = document.getElementById("fretboard");
+  const fretNumberEl = document.getElementById("fret-numbers");
+  const markerEl = document.getElementById("fret-markers");
+  const fretNumberBottomEl = document.getElementById("fret-numbers-bottom");
+  const markerBottomEl = document.getElementById("fret-markers-bottom");
+
+  // Set CSS variables so CSS grid knows dimensions (23 positions for frets 0-22)
+  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT + 1));
+
+  // Build fret number header (0..22) using explicit grid-column placement for perfect alignment
+  function renderFretNumbers(targetEl) {
+    let html = '';
+    html += `<div style="grid-column:1"></div>`; // label spacer
+
+    // Fret 0
+    html += `<div class="fret-num-cell" style="grid-column:2">0</div>`;
+
+    // Nut
+    html += `<div class="fret-num-cell nut-cell" style="grid-column:3"></div>`;
+
+    // Frets 1-22
+    for (let f = 1; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      html += `<div class="fret-num-cell" style="grid-column:${col}">${f}</div>`;
     }
-  };
+    targetEl.innerHTML = html;
+  }
 
-  const MINOR_TRIAD_SHAPES = {
-    5: { // Root on low E (index 5)
-      // Gm at fret 3: E/3=G, A/1=Bb(b3), D/0=D(5)
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },    // Root on low E
-        { stringOffset: -1, fretOffset: -2, role: 'b3' }, // m3 on A (2 frets lower)
-        { stringOffset: -2, fretOffset: -3, role: '5' }   // P5 on D (3 frets lower)
-      ]
-    },
-    4: { // Root on A (index 4)
-      // Cm at fret 3: A/3=C, D/1=Eb(b3), G/0=G(5)
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },    // Root on A
-        { stringOffset: -1, fretOffset: -2, role: 'b3' }, // m3 on D (2 frets lower)
-        { stringOffset: -2, fretOffset: -3, role: '5' }   // P5 on G (3 frets lower)
-      ]
-    },
-    3: { // Root on D (index 3)
-      // Fm at fret 3: D/3=F, G/1=Ab(b3), B/1=C(5)
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },    // Root on D
-        { stringOffset: -1, fretOffset: -2, role: 'b3' }, // m3 on G (2 frets lower)
-        { stringOffset: -2, fretOffset: -2, role: '5' }   // P5 on B (2 frets lower)
-      ]
-    },
-    2: { // Root on G (index 2)
-      // Bbm at fret 3: G/3=Bb, B/2=Db(b3), E/1=F(5)
-      notes: [
-        { stringOffset: 0, fretOffset: 0, role: 'R' },    // Root on G
-        { stringOffset: -1, fretOffset: -1, role: 'b3' }, // m3 on B (1 fret lower)
-        { stringOffset: -2, fretOffset: -2, role: '5' }   // P5 on high E (2 frets lower)
-      ]
-    },
-    1: { // Root on B (index 1)
-      // Cm at fret 1: B/1=C, need Eb(b3) and G(5)
-      notes: [
-        { stringOffset: 1, fretOffset: -1, role: '5' },   // P5 on G (1 fret lower)
-        { stringOffset: 0, fretOffset: 0, role: 'R' },    // Root on B
-        { stringOffset: -1, fretOffset: -2, role: 'b3' }  // m3 on high E (2 frets lower)
-      ]
-    },
-    0: { // Root on high E (index 0)
-      // Gm at fret 3 on high E: need Bb(b3) and D(5)
-      notes: [
-        { stringOffset: 3, fretOffset: -3, role: '5' },   // P5 on D
-        { stringOffset: 2, fretOffset: -3, role: 'R' },   // Root on G (octave down)
-        { stringOffset: 1, fretOffset: -4, role: 'b3' }   // m3 on B
-      ]
-    }
-  };
+  // Build fret markers row with explicit column placement
+  function renderFretMarkers(targetEl) {
+    const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
+    let html = '';
 
-  // Alternative shapes (inversions) for when standard shapes would require negative frets
-  // These use shapes that go UP the fretboard instead of down
-  const MAJOR_TRIAD_ALT_SHAPES = {
-    5: { // Root on low E - 2nd inversion going up (5, R, 3)
-      // E major at fret 0: E/0=E, A/2=B(5), D/2=E(R), G/1=G#(3)
-      notes: [
-        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on A (fret+2)
-        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on D (fret+2)
-        { stringOffset: -3, fretOffset: 1, role: '3' }    // M3 on G (fret+1)
-      ]
-    },
-    4: { // Root on A - 2nd inversion going up
-      // A major at fret 0: A/0=A, D/2=E(5), G/2=A(R), B/2=C#(3)
-      notes: [
-        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on D (fret+2)
-        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on G (fret+2)
-        { stringOffset: -3, fretOffset: 2, role: '3' }    // M3 on B (fret+2)
-      ]
-    },
-    3: { // Root on D - 2nd inversion going up
-      // D major at fret 0: D/0=D, G/2=A(5), B/3=D(R), E/2=F#(3)
-      notes: [
-        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on G (fret+2)
-        { stringOffset: -2, fretOffset: 3, role: 'R' },   // R on B (fret+3, G-B adjustment)
-        { stringOffset: -3, fretOffset: 2, role: '3' }    // M3 on E (fret+2)
-      ]
-    },
-    2: { // Root on G - use 5 on D string (lower string)
-      // G major at fret 0: D/0=D(5), G/0=G(R), B/0=B(3)
-      notes: [
-        { stringOffset: 1, fretOffset: 0, role: '5' },    // P5 on D (same fret)
-        { stringOffset: 0, fretOffset: 0, role: 'R' },    // R on G
-        { stringOffset: -1, fretOffset: 0, role: '3' }    // M3 on B (same fret, G-B=M3)
-      ]
-    },
-    1: { // Root on B - shifted shape using D, G, B
-      // B major at fret 0: D/4=F#(5), G/4=B(R), B/4=D#(3)
-      notes: [
-        { stringOffset: 2, fretOffset: 4, role: '5' },    // P5 on D (fret+4)
-        { stringOffset: 1, fretOffset: 4, role: 'R' },    // R on G (fret+4)
-        { stringOffset: 0, fretOffset: 4, role: '3' }     // M3 on B (fret+4)
-      ]
-    },
-    0: { // Root on high E - 1st inversion using D, G, B
-      // E major at fret 0: D/2=E(R), G/1=G#(3), B/0=B(5)
-      notes: [
-        { stringOffset: 3, fretOffset: 2, role: 'R' },    // R on D (fret+2)
-        { stringOffset: 2, fretOffset: 1, role: '3' },    // M3 on G (fret+1)
-        { stringOffset: 1, fretOffset: 0, role: '5' }     // P5 on B (same fret)
-      ]
-    }
-  };
+    // Label spacer
+    html += `<div style="grid-column:1"></div>`;
 
-  const MINOR_TRIAD_ALT_SHAPES = {
-    5: { // Root on low E - inversion going up
-      // Em at fret 0: E/0=E, A/2=B(5), D/2=E(R), G/0=G(b3)
-      notes: [
-        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on A (fret+2)
-        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on D (fret+2)
-        { stringOffset: -3, fretOffset: 0, role: 'b3' }   // m3 on G (same fret)
-      ]
-    },
-    4: { // Root on A - inversion going up
-      // Am at fret 0: A/0=A, D/2=E(5), G/2=A(R), B/1=C(b3)
-      notes: [
-        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on D (fret+2)
-        { stringOffset: -2, fretOffset: 2, role: 'R' },   // R on G (fret+2)
-        { stringOffset: -3, fretOffset: 1, role: 'b3' }   // m3 on B (fret+1)
-      ]
-    },
-    3: { // Root on D - inversion going up
-      // Dm at fret 0: D/0=D, G/2=A(5), B/3=D(R), E/1=F(b3)
-      notes: [
-        { stringOffset: -1, fretOffset: 2, role: '5' },   // P5 on G (fret+2)
-        { stringOffset: -2, fretOffset: 3, role: 'R' },   // R on B (fret+3)
-        { stringOffset: -3, fretOffset: 1, role: 'b3' }   // m3 on E (fret+1)
-      ]
-    },
-    2: { // Root on G - use shape going up
-      // Gm at fret 0: D/5=G(R), G/3=Bb(b3), B/3=D(5)
-      notes: [
-        { stringOffset: 1, fretOffset: 5, role: 'R' },    // R on D (fret+5, octave down)
-        { stringOffset: 0, fretOffset: 3, role: 'b3' },   // m3 on G (fret+3)
-        { stringOffset: -1, fretOffset: 3, role: '5' }    // P5 on B (fret+3)
-      ]
-    },
-    1: { // Root on B - shifted shape
-      // Cm at fret 1: G/5=C(R), B/4=Eb(b3), E/3=G(5)
-      notes: [
-        { stringOffset: 1, fretOffset: 4, role: 'R' },    // R on G (fret+4)
-        { stringOffset: 0, fretOffset: 3, role: 'b3' },   // m3 on B (fret+3)
-        { stringOffset: -1, fretOffset: 2, role: '5' }    // P5 on E (fret+2)
-      ]
-    },
-    0: { // Root on high E - 1st inversion using D, G, B
-      // Em at fret 0: D/2=E(R), G/0=G(b3), B/0=B(5)
-      notes: [
-        { stringOffset: 3, fretOffset: 2, role: 'R' },    // R on D (fret+2)
-        { stringOffset: 2, fretOffset: 0, role: 'b3' },   // m3 on G (same fret)
-        { stringOffset: 1, fretOffset: 0, role: '5' }     // P5 on B (same fret)
-      ]
+    // Fret 0
+    html += `<div class="fret-marker-cell" style="grid-column:2"></div>`;
+
+    // Nut
+    html += `<div class="fret-marker-cell nut-cell" style="grid-column:3"></div>`;
+
+    // Frets 1-22
+    for (let f = 1; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      let content = '';
+      if (singleDotFrets.has(f)) {
+        content = `<div class="dot"></div>`;
+      } else if (f === 12) {
+        content = `<div class="double"><div class="dot"></div><div class="dot"></div></div>`;
+      }
+      html += `<div class="fret-marker-cell" style="grid-column:${col}">${content}</div>`;
     }
-  };
+    targetEl.innerHTML = html;
+  }
+
+  renderFretNumbers(fretNumberEl);
+  renderFretMarkers(markerEl);
+  // Bottom duplicates
+  if (fretNumberBottomEl) renderFretNumbers(fretNumberBottomEl);
+  if (markerBottomEl) renderFretMarkers(markerBottomEl);
 
   // Helper: get note name n semitones above base
   function noteUp(baseNote, semitoneSteps) {
@@ -380,28 +378,239 @@ const FretboardCore = (function () {
     return NOTE_ORDER[idx];
   }
 
-  // Calculate interval steps between two notes
-  function getIntervalSteps(noteLetter, rootLetter) {
-    return (NOTE_ORDER.indexOf(noteLetter) - NOTE_ORDER.indexOf(rootLetter) + 12) % 12;
+  // Build fretboard grid rows (strings)
+  function buildBoard() {
+    // Nut element is inserted once and spans all rows
+    const nutDiv = `<div class="nut" aria-hidden="true"></div>`;
+
+    // For display, strings are visually top to bottom high to low; but the user asked bottom to top listing E A D G B E.
+    // We'll render from top to bottom in the requested visual order: bottom string is first in the data, but in grid we add rows top to bottom.
+    // To meet the request "from bottom to top E, A, D, G, B, E" we must place the low E at the bottom visually.
+    // We'll therefore iterate from high to low so the last (low E) ends up bottom.
+    const stringsTopToBottom = [...STRINGS_LOW_TO_HIGH].reverse();
+
+    // Start the grid content with per-string rows
+    let html = nutDiv; // place nut first
+
+    stringsTopToBottom.forEach((openNote, rowIndex) => {
+      // Row label
+      html += `<div class="string-label cell">${openNote}</div>`;
+
+      // Open string + 22 frets => we need FRET_COUNT cells beyond the nut column; each cell will contain a note circle
+      for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
+        // Fret number 'fret' corresponds to semitone steps from open string = fret
+        const stepsFromOpen = fret; // because 1st fret = +1 semitone
+        const noteName = noteUp(openNote, stepsFromOpen);
+        const sharpClass = noteName.includes('#') ? ' sharp' : '';
+        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">
+          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" data-string-index=\"${rowIndex}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">
+            <span class="interval ghost">${noteName}</span>
+            <span class="letter ghost">${noteName}</span>
+          </button>
+        </div>`;
+      }
+    });
+
+    boardEl.innerHTML = html;
   }
 
-  // Build fret number header
+  buildBoard();
+
+  // Scale definitions (intervals in semitones from root)
+  const SCALES = {
+    'major': new Set([0, 2, 4, 5, 7, 9, 11]),
+    'minor': new Set([0, 2, 3, 5, 7, 8, 10]),
+    'major-pentatonic': new Set([0, 2, 4, 7, 9]),
+    'minor-pentatonic': new Set([0, 3, 5, 7, 10])
+  };
+
+  let activeRoot = null; // { letter: string }
+  let selectedScale = null; // 'major', 'minor', etc. or null
+
+  function clearIntervals() {
+    activeRoot = null;
+    const notes = boardEl.querySelectorAll(".note");
+    notes.forEach((btn) => {
+      btn.classList.remove("root", "active-triad");
+      const intervalEl = btn.querySelector(".interval");
+      const letterEl = btn.querySelector(".letter");
+      const letter = btn.getAttribute("data-note");
+      if (intervalEl) intervalEl.textContent = ""; // no interval when not selected
+      if (letterEl) letterEl.textContent = letter || "";
+      btn.querySelectorAll(".ghost").forEach((g) => g.classList.remove("ghost"));
+      // When inactive, both texts visible but we just show the note letter only
+      if (intervalEl) intervalEl.classList.add("ghost");
+    });
+  }
+
+  function showIntervals(rootLetter) {
+    const notes = boardEl.querySelectorAll(".note");
+    notes.forEach((btn) => {
+      const noteLetter = btn.getAttribute("data-note");
+      // Ensure style class for sharps remains if DOM was re-rendered/changed
+      if (noteLetter && noteLetter.includes('#')) {
+        btn.classList.add('sharp');
+      } else {
+        btn.classList.remove('sharp');
+      }
+      const intervalSteps =
+        (NOTE_ORDER.indexOf(noteLetter) - NOTE_ORDER.indexOf(rootLetter) + 12) % 12;
+      const intervalName = INTERVAL_BY_STEPS[intervalSteps];
+
+      const intervalEl = btn.querySelector(".interval");
+      const letterEl = btn.querySelector(".letter");
+      if (intervalEl) intervalEl.textContent = intervalName;
+      if (letterEl) letterEl.textContent = noteLetter || "";
+
+      // Highlight root
+      btn.classList.toggle("root", intervalSteps === 0);
+
+      // Scale highlighting logic
+      let isScaleNote = false;
+      if (selectedScale && SCALES[selectedScale]) {
+        if (SCALES[selectedScale].has(intervalSteps)) {
+          isScaleNote = true;
+        }
+      }
+
+      // Apply highlighting
+      if (selectedScale) {
+        if (isScaleNote) {
+          btn.classList.add('active-triad'); // Red outline for scale notes
+          btn.classList.remove('ghost'); // Show note
+          // Ensure visible
+          intervalEl && intervalEl.classList.remove("ghost");
+          letterEl && letterEl.classList.remove("ghost");
+        } else {
+          btn.classList.remove('active-triad');
+          btn.classList.add('ghost'); // Hide entire note
+        }
+      } else {
+        // Default behavior: show all intervals
+        btn.classList.remove('active-triad');
+        btn.classList.remove('ghost');
+        intervalEl && intervalEl.classList.remove("ghost");
+        letterEl && letterEl.classList.remove("ghost");
+      }
+
+      // Always ensure root is fully visible
+      if (intervalSteps === 0) {
+        btn.classList.remove('ghost');
+        intervalEl && intervalEl.classList.remove("ghost");
+        letterEl && letterEl.classList.remove("ghost");
+        // Optional: give root a red outline too if it's part of scale (it always is)
+        if (selectedScale) btn.classList.add('active-triad');
+      }
+    });
+  }
+
+  // Click delegation
+  boardEl.addEventListener("click", (e) => {
+    const btn = e.target.closest && e.target.closest(".note");
+    if (!btn) return;
+    const note = btn.getAttribute("data-note");
+    if (!note) return;
+
+    // Play the note sound
+    const openString = btn.getAttribute("data-open");
+    const fret = parseInt(btn.getAttribute("data-fret"), 10);
+    const stringIndex = parseInt(btn.getAttribute("data-string-index"), 10);
+    GuitarAudio.playNote(openString, fret, stringIndex);
+
+    if (activeRoot === note) {
+      clearIntervals();
+    } else {
+      activeRoot = note;
+      showIntervals(note);
+    }
+  });
+
+  // Scale selection buttons
+  const scaleButtons = document.querySelectorAll('.btn-scale');
+  scaleButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Update active state
+      scaleButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      // Set scale
+      const scale = btn.dataset.scale;
+      selectedScale = scale === 'none' ? null : scale;
+
+      // Re-render if root is selected
+      if (activeRoot) {
+        showIntervals(activeRoot);
+      }
+    });
+  });
+
+  // Keyboard clear
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") clearIntervals();
+  });
+
+  // Initialize default view: labels only (note letters), no intervals highlighted
+  clearIntervals();
+})();
+
+
+
+// Guitar Major Triads App (second instance)
+(function () {
+  /**
+   * Musical data
+   */
+  const NOTE_ORDER = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
+
+  // Standard tuning string notes from bottom to top: E, A, D, G, B, E
+  const STRINGS_LOW_TO_HIGH = ["E", "A", "D", "G", "B", "E"]; // low to high
+
+  // UI constants
+  const FRET_COUNT = 22;
+
+  // DOM for second instance
+  const boardEl = document.getElementById("fretboard-2");
+  const fretNumberEl = document.getElementById("fret-numbers-2");
+  const markerEl = document.getElementById("fret-markers-2");
+  const fretNumberBottomEl = document.getElementById("fret-numbers-bottom-2");
+  const markerBottomEl = document.getElementById("fret-markers-bottom-2");
+  if (!boardEl) return;
+
+  // Ensure CSS var is set (global)
+  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT + 1));
+
   function renderFretNumbers(targetEl) {
     if (!targetEl) return;
-    let html = '<div style="grid-column:1"></div><div style="grid-column:2"></div>';
-    for (let f = 0; f <= FRET_COUNT; f++) {
-      html += `<div style="grid-column:${3 + f}">${f}</div>`;
+    let html = '';
+    html += `<div style="grid-column:1"></div>`; // label spacer
+    html += `<div style="grid-column:2"></div>`; // nut spacer
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      html += `<div style="grid-column:${col}">${f}</div>`;
     }
     targetEl.innerHTML = html;
   }
 
-  // Build fret markers row
   function renderFretMarkers(targetEl) {
     if (!targetEl) return;
+    const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
     let html = '';
-    for (let f = 0; f <= FRET_COUNT; f++) {
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
       const col = 3 + f;
-      if (SINGLE_DOT_FRETS.has(f)) {
+      if (singleDotFrets.has(f)) {
         html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
       } else if (f === 12) {
         html += `<div class="double" style="grid-column:${col}" aria-hidden="true"><div class="dot"></div><div class="dot"></div></div>`;
@@ -410,344 +619,320 @@ const FretboardCore = (function () {
     targetEl.innerHTML = html;
   }
 
-  // Build fretboard HTML
-  function buildBoardHTML(showIntervalOnInit) {
-    const stringsTopToBottom = [...STRINGS_LOW_TO_HIGH].reverse();
-    let html = '<div class="nut" aria-hidden="true"></div>';
+  function noteUp(baseNote, semitoneSteps) {
+    const baseIndex = NOTE_ORDER.indexOf(baseNote);
+    const idx = (baseIndex + semitoneSteps) % 12;
+    return NOTE_ORDER[idx];
+  }
 
+  function buildBoard() {
+    const nutDiv = `<div class=\"nut\" aria-hidden=\"true\"></div>`;
+    const stringsTopToBottom = [...STRINGS_LOW_TO_HIGH].reverse();
+    let html = nutDiv;
     stringsTopToBottom.forEach((openNote, rowIndex) => {
-      html += `<div class="string-label cell">${openNote}</div>`;
-      for (let fret = 0; fret <= FRET_COUNT; fret++) {
-        const noteName = noteUp(openNote, fret);
+      html += `<div class=\"string-label cell\">${openNote}</div>`;
+      for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
+        const stepsFromOpen = fret;
+        const noteName = noteUp(openNote, stepsFromOpen);
         const sharpClass = noteName.includes('#') ? ' sharp' : '';
-        const intervalClass = showIntervalOnInit ? '' : ' ghost';
-        html += `<div class="cell" data-string="${openNote}" data-fret="${fret}">
-          <button class="note${sharpClass}" data-note="${noteName}" data-open="${openNote}" data-fret="${fret}" data-string-index="${rowIndex}" aria-label="${noteName} at fret ${fret} on ${openNote} string">
-            <span class="interval${intervalClass}"></span>
-            <span class="letter">${noteName}</span>
-          </button>
-        </div>`;
+        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">\n          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" data-string-index=\"${rowIndex}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">\n            <span class=\"interval ghost\"></span>\n            <span class=\"letter\">${noteName}</span>\n          </button>\n        </div>`;
       }
     });
-
-    return html;
+    boardEl.innerHTML = html;
   }
 
-  // Helper to calculate positions from a shape definition
-  function calculatePositions(shape, rootStringIndex, rootFret) {
-    if (!shape) return null;
-
-    const positions = [];
-    let allValid = true;
-
-    for (const note of shape.notes) {
-      const stringIndex = rootStringIndex + note.stringOffset;
-      const fret = rootFret + note.fretOffset;
-
-      // Check if position is valid
-      if (stringIndex >= 0 && stringIndex <= 5 && fret >= 0 && fret <= FRET_COUNT) {
-        positions.push({
-          stringIndex: stringIndex,
-          fret: fret,
-          role: note.role
-        });
-      } else {
-        allValid = false;
-      }
-    }
-
-    return { positions, allValid };
-  }
-
-  // Calculate triad shape positions, using alternative shapes when standard doesn't fit
-  function getTriadShapePositions(rootStringIndex, rootFret, triadType) {
-    const standardShapes = triadType === 'major' ? MAJOR_TRIAD_SHAPES : MINOR_TRIAD_SHAPES;
-    const altShapes = triadType === 'major' ? MAJOR_TRIAD_ALT_SHAPES : MINOR_TRIAD_ALT_SHAPES;
-
-    // Try standard shape first
-    const standardShape = standardShapes[rootStringIndex];
-    const standardResult = calculatePositions(standardShape, rootStringIndex, rootFret);
-
-    if (standardResult && standardResult.allValid && standardResult.positions.length === 3) {
-      return standardResult.positions;
-    }
-
-    // Fall back to alternative shape
-    const altShape = altShapes[rootStringIndex];
-    const altResult = calculatePositions(altShape, rootStringIndex, rootFret);
-
-    if (altResult && altResult.positions.length >= 3) {
-      return altResult.positions;
-    }
-
-    // If neither works fully, return whatever we got from standard (partial shape)
-    return standardResult ? standardResult.positions : [];
-  }
-
-  return {
-    NOTE_ORDER,
-    INTERVAL_BY_STEPS,
-    STRINGS_LOW_TO_HIGH,
-    FRET_COUNT,
-    MAJOR_TRIAD_SHAPES,
-    MINOR_TRIAD_SHAPES,
-    noteUp,
-    getIntervalSteps,
-    renderFretNumbers,
-    renderFretMarkers,
-    buildBoardHTML,
-    getTriadShapePositions
-  };
-})();
-
-// ============================================
-// Fretboard Factory
-// ============================================
-function createFretboard(config) {
-  const {
-    boardId,
-    fretNumbersId,
-    markersId,
-    fretNumbersBottomId,
-    markersBottomId,
-    mode // 'intervals' | 'major-triad' | 'minor-triad'
-  } = config;
-
-  const boardEl = document.getElementById(boardId);
-  const fretNumberEl = document.getElementById(fretNumbersId);
-  const markerEl = document.getElementById(markersId);
-  const fretNumberBottomEl = document.getElementById(fretNumbersBottomId);
-  const markerBottomEl = document.getElementById(markersBottomId);
-
-  if (!boardEl) return null;
-
-  // Set CSS variable for grid dimensions
-  document.documentElement.style.setProperty("--fret-count", String(FretboardCore.FRET_COUNT + 1));
-
-  // Render chrome elements
-  FretboardCore.renderFretNumbers(fretNumberEl);
-  FretboardCore.renderFretMarkers(markerEl);
-  if (fretNumberBottomEl) FretboardCore.renderFretNumbers(fretNumberBottomEl);
-  if (markerBottomEl) FretboardCore.renderFretMarkers(markerBottomEl);
-
-  // Build the fretboard
-  boardEl.innerHTML = FretboardCore.buildBoardHTML(false);
+  renderFretNumbers(fretNumberEl);
+  renderFretMarkers(markerEl);
+  if (fretNumberBottomEl) renderFretNumbers(fretNumberBottomEl);
+  if (markerBottomEl) renderFretMarkers(markerBottomEl);
+  buildBoard();
 
   let activeRoot = null;
-  let activeRootInfo = null; // {stringIndex, fret}
 
-  const isTriadMode = mode === 'major-triad' || mode === 'minor-triad';
-  const triadType = mode === 'major-triad' ? 'major' : (mode === 'minor-triad' ? 'minor' : null);
-
-  function clear() {
+  function clearTriad() {
     activeRoot = null;
-    activeRootInfo = null;
     const notes = boardEl.querySelectorAll('.note');
     notes.forEach((btn) => {
-      btn.classList.remove('root', 'triad-shape', 'triad-related');
+      btn.classList.remove('root');
+      btn.classList.remove('active-triad');
       const intervalEl = btn.querySelector('.interval');
       const letterEl = btn.querySelector('.letter');
       const letter = btn.getAttribute('data-note');
-      if (intervalEl) {
-        intervalEl.textContent = '';
-        intervalEl.classList.add('ghost');
-      }
-      if (letterEl) {
-        letterEl.textContent = letter || '';
-        letterEl.classList.remove('ghost');
-      }
+      if (intervalEl) intervalEl.textContent = '';
+      if (letterEl) letterEl.textContent = letter || '';
+      intervalEl && intervalEl.classList.add('ghost');
+      letterEl && letterEl.classList.remove('ghost');
     });
   }
 
-  function showIntervals(rootLetter) {
+  function showMajorTriad(rootLetter, rootStringIndex, rootFret) {
+    const triadSet = new Set([0, 4, 7]); // R, M3, P5
+
+    // Get specific triad positions for red outline
+    const triadPositions = GuitarAudio.getTriadNotes(rootStringIndex, rootFret, true);
+    const positionKeys = new Set(triadPositions.map(n => `${n.stringIndex}-${n.fret}`));
+
     const notes = boardEl.querySelectorAll('.note');
     notes.forEach((btn) => {
       const noteLetter = btn.getAttribute('data-note');
       if (!noteLetter) return;
-
-      // Maintain sharp styling
-      btn.classList.toggle('sharp', noteLetter.includes('#'));
-
-      const intervalSteps = FretboardCore.getIntervalSteps(noteLetter, rootLetter);
-      const intervalName = FretboardCore.INTERVAL_BY_STEPS[intervalSteps];
-
-      const intervalEl = btn.querySelector('.interval');
-      const letterEl = btn.querySelector('.letter');
-
-      if (intervalEl) {
-        intervalEl.textContent = intervalName;
-        intervalEl.classList.remove('ghost');
-      }
-      if (letterEl) {
-        letterEl.textContent = noteLetter;
-        letterEl.classList.remove('ghost');
-      }
-      btn.classList.toggle('root', intervalSteps === 0);
-    });
-  }
-
-  function showTriadShape(rootLetter, rootStringIndex, rootFret) {
-    // Get the specific triad shape positions
-    const positions = FretboardCore.getTriadShapePositions(rootStringIndex, rootFret, triadType);
-
-    // Define triad intervals based on type
-    const triadIntervals = triadType === 'major' ? new Set([0, 4, 7]) : new Set([0, 3, 7]);
-
-    // Process all notes on the fretboard
-    const notes = boardEl.querySelectorAll('.note');
-    notes.forEach((btn) => {
-      const noteLetter = btn.getAttribute('data-note');
-      btn.classList.toggle('sharp', noteLetter && noteLetter.includes('#'));
-      btn.classList.remove('root', 'triad-shape', 'triad-related');
-
-      const intervalEl = btn.querySelector('.interval');
-      const letterEl = btn.querySelector('.letter');
-
-      // Calculate interval from root
-      const intervalSteps = FretboardCore.getIntervalSteps(noteLetter, rootLetter);
-      const isTriadNote = triadIntervals.has(intervalSteps);
-
-      if (isTriadNote) {
-        // This note is part of the triad - highlight with bold text
-        btn.classList.add('triad-related');
-        if (letterEl) {
-          letterEl.textContent = noteLetter || '';
-          letterEl.classList.remove('ghost');
-        }
-        if (intervalEl) {
-          intervalEl.textContent = '';
-          intervalEl.classList.add('ghost');
-        }
+      // keep sharp styling consistent
+      if (noteLetter.includes('#')) {
+        btn.classList.add('sharp');
       } else {
-        // Ghost non-triad notes
-        if (intervalEl) {
-          intervalEl.textContent = '';
-          intervalEl.classList.add('ghost');
+        btn.classList.remove('sharp');
+      }
+      const intervalSteps = (NOTE_ORDER.indexOf(noteLetter) - NOTE_ORDER.indexOf(rootLetter) + 12) % 12;
+      const intervalEl = btn.querySelector('.interval');
+      const letterEl = btn.querySelector('.letter');
+
+      const btnStringIndex = btn.getAttribute('data-string-index');
+      const btnFret = btn.getAttribute('data-fret');
+      const posKey = `${btnStringIndex}-${btnFret}`;
+
+      if (triadSet.has(intervalSteps)) {
+        const label = intervalSteps === 0 ? 'R' : intervalSteps === 4 ? '3' : '5';
+        if (intervalEl) intervalEl.textContent = label;
+        if (letterEl) letterEl.textContent = noteLetter || '';
+        intervalEl && intervalEl.classList.remove('ghost');
+        letterEl && letterEl.classList.remove('ghost');
+        btn.classList.toggle('root', intervalSteps === 0);
+
+        if (positionKeys.has(posKey)) {
+          btn.classList.add('active-triad');
+        } else {
+          btn.classList.remove('active-triad');
         }
-        if (letterEl) {
-          letterEl.textContent = noteLetter || '';
-          letterEl.classList.add('ghost');
-        }
+        btn.classList.remove('ghost'); // Show note
+      } else {
+        if (intervalEl) intervalEl.textContent = '';
+        if (letterEl) letterEl.textContent = noteLetter || '';
+        intervalEl && intervalEl.classList.add('ghost');
+        letterEl && letterEl.classList.add('ghost');
+        btn.classList.remove('root');
+        btn.classList.remove('active-triad');
+        btn.classList.add('ghost'); // Hide entire note
       }
     });
-
-    // Highlight the specific triad shape notes with red circles
-    if (positions) {
-      positions.forEach((pos) => {
-        const btn = boardEl.querySelector(
-          `.note[data-string-index="${pos.stringIndex}"][data-fret="${pos.fret}"]`
-        );
-        if (btn) {
-          const noteLetter = btn.getAttribute('data-note');
-          const intervalEl = btn.querySelector('.interval');
-          const letterEl = btn.querySelector('.letter');
-
-          btn.classList.add('triad-shape');
-          if (pos.role === 'R') {
-            btn.classList.add('root');
-          }
-
-          // Show the role label for shape notes
-          if (intervalEl) {
-            intervalEl.textContent = pos.role;
-            intervalEl.classList.remove('ghost');
-          }
-          if (letterEl) {
-            letterEl.textContent = noteLetter || '';
-            letterEl.classList.remove('ghost');
-          }
-        }
-      });
-    }
-
-    return positions;
   }
 
-  function playTriadSound(positions) {
-    if (positions && positions.length > 0) {
-      GuitarAudio.playTriadNotes(positions);
-    }
-  }
-
-  function playIntervalSound(btn) {
-    const openString = btn.getAttribute('data-open');
-    const fret = parseInt(btn.getAttribute('data-fret'), 10);
-    const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
-    GuitarAudio.playNote(openString, fret, stringIndex);
-  }
-
-  // Click handler
   boardEl.addEventListener('click', (e) => {
     const btn = e.target.closest && e.target.closest('.note');
     if (!btn) return;
     const note = btn.getAttribute('data-note');
     if (!note) return;
 
-    const fret = parseInt(btn.getAttribute('data-fret'), 10);
-    const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
-
-    // Check if clicking the same root note to toggle off
-    if (activeRoot === note &&
-        activeRootInfo &&
-        activeRootInfo.stringIndex === stringIndex &&
-        activeRootInfo.fret === fret) {
-      clear();
+    if (activeRoot === note) {
+      clearTriad();
     } else {
       activeRoot = note;
-      activeRootInfo = { stringIndex, fret };
+      // Play the major triad (Root, Major 3rd, Perfect 5th) at the clicked pitch
+      const openString = btn.getAttribute('data-open');
+      const fret = parseInt(btn.getAttribute('data-fret'), 10);
+      const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
 
-      if (isTriadMode) {
-        const positions = showTriadShape(note, stringIndex, fret);
-        playTriadSound(positions);
-      } else {
-        showIntervals(note);
-        playIntervalSound(btn);
+      showMajorTriad(note, stringIndex, fret);
+
+      const rootFreq = GuitarAudio.getFrequency(openString, fret, stringIndex);
+      console.log('Major Triad - String:', openString, 'Fret:', fret, 'StringIndex:', stringIndex, 'RootFreq:', rootFreq);
+      GuitarAudio.playTriad(rootFreq, [0, 4, 7]);
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') clearTriad();
+  });
+
+  clearTriad();
+})();
+
+
+// Guitar Minor Triads App (third instance)
+(function () {
+  /**
+   * Musical data
+   */
+  const NOTE_ORDER = [
+    "C",
+    "C#",
+    "D",
+    "D#",
+    "E",
+    "F",
+    "F#",
+    "G",
+    "G#",
+    "A",
+    "A#",
+    "B",
+  ];
+
+  // Standard tuning string notes from bottom to top: E, A, D, G, B, E
+  const STRINGS_LOW_TO_HIGH = ["E", "A", "D", "G", "B", "E"]; // low to high
+
+  // UI constants
+  const FRET_COUNT = 22;
+
+  // DOM for third instance
+  const boardEl = document.getElementById("fretboard-3");
+  const fretNumberEl = document.getElementById("fret-numbers-3");
+  const markerEl = document.getElementById("fret-markers-3");
+  const fretNumberBottomEl = document.getElementById("fret-numbers-bottom-3");
+  const markerBottomEl = document.getElementById("fret-markers-bottom-3");
+  if (!boardEl) return;
+
+  document.documentElement.style.setProperty("--fret-count", String(FRET_COUNT + 1));
+
+  function renderFretNumbers(targetEl) {
+    if (!targetEl) return;
+    let html = '';
+    html += `<div style="grid-column:1"></div>`; // label spacer
+    html += `<div style="grid-column:2"></div>`; // nut spacer
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      html += `<div style="grid-column:${col}">${f}</div>`;
+    }
+    targetEl.innerHTML = html;
+  }
+
+  function renderFretMarkers(targetEl) {
+    if (!targetEl) return;
+    const singleDotFrets = new Set([3, 5, 7, 9, 15, 17, 19, 21]);
+    let html = '';
+    for (let f = 0; f <= FRET_COUNT; f += 1) {
+      const col = 3 + f;
+      if (singleDotFrets.has(f)) {
+        html += `<div class="dot" style="grid-column:${col}" aria-hidden="true"></div>`;
+      } else if (f === 12) {
+        html += `<div class="double" style="grid-column:${col}" aria-hidden="true"><div class="dot"></div><div class="dot"></div></div>`;
       }
     }
-  });
+    targetEl.innerHTML = html;
+  }
 
-  // Initialize
-  clear();
+  function noteUp(baseNote, semitoneSteps) {
+    const NOTE_ORDER_LOCAL = NOTE_ORDER;
+    const baseIndex = NOTE_ORDER_LOCAL.indexOf(baseNote);
+    const idx = (baseIndex + semitoneSteps) % 12;
+    return NOTE_ORDER_LOCAL[idx];
+  }
 
-  // Return clear function for global escape handler
-  return { clear };
-}
+  function buildBoard() {
+    const nutDiv = `<div class=\"nut\" aria-hidden=\"true\"></div>`;
+    const stringsTopToBottom = [...STRINGS_LOW_TO_HIGH].reverse();
+    let html = nutDiv;
+    stringsTopToBottom.forEach((openNote, rowIndex) => {
+      html += `<div class=\"string-label cell\">${openNote}</div>`;
+      for (let fret = 0; fret <= FRET_COUNT; fret += 1) {
+        const stepsFromOpen = fret;
+        const noteName = noteUp(openNote, stepsFromOpen);
+        const sharpClass = noteName.includes('#') ? ' sharp' : '';
+        html += `<div class=\"cell\" data-string=\"${openNote}\" data-fret=\"${fret}\">\n          <button class=\"note${sharpClass}\" data-note=\"${noteName}\" data-open=\"${openNote}\" data-fret=\"${fret}\" data-string-index=\"${rowIndex}\" aria-label=\"${noteName} at fret ${fret} on ${openNote} string\">\n            <span class=\"interval ghost\"></span>\n            <span class=\"letter\">${noteName}</span>\n          </button>\n        </div>`;
+      }
+    });
+    boardEl.innerHTML = html;
+  }
 
-// ============================================
-// Initialize All Fretboards
-// ============================================
-(function () {
-  const fretboards = [
-    createFretboard({
-      boardId: 'fretboard',
-      fretNumbersId: 'fret-numbers',
-      markersId: 'fret-markers',
-      fretNumbersBottomId: 'fret-numbers-bottom',
-      markersBottomId: 'fret-markers-bottom',
-      mode: 'intervals'
-    }),
-    createFretboard({
-      boardId: 'fretboard-2',
-      fretNumbersId: 'fret-numbers-2',
-      markersId: 'fret-markers-2',
-      fretNumbersBottomId: 'fret-numbers-bottom-2',
-      markersBottomId: 'fret-markers-bottom-2',
-      mode: 'major-triad'
-    }),
-    createFretboard({
-      boardId: 'fretboard-3',
-      fretNumbersId: 'fret-numbers-3',
-      markersId: 'fret-markers-3',
-      fretNumbersBottomId: 'fret-numbers-bottom-3',
-      markersBottomId: 'fret-markers-bottom-3',
-      mode: 'minor-triad'
-    })
-  ].filter(Boolean);
+  renderFretNumbers(fretNumberEl);
+  renderFretMarkers(markerEl);
+  if (fretNumberBottomEl) renderFretNumbers(fretNumberBottomEl);
+  if (markerBottomEl) renderFretMarkers(markerBottomEl);
+  buildBoard();
 
-  // Single global escape handler for all fretboards
-  window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      fretboards.forEach((fb) => fb.clear());
+  let activeRoot = null;
+
+  function clearTriad() {
+    activeRoot = null;
+    const notes = boardEl.querySelectorAll('.note');
+    notes.forEach((btn) => {
+      btn.classList.remove('root');
+      btn.classList.remove('active-triad');
+      const intervalEl = btn.querySelector('.interval');
+      const letterEl = btn.querySelector('.letter');
+      const letter = btn.getAttribute('data-note');
+      if (intervalEl) intervalEl.textContent = '';
+      if (letterEl) letterEl.textContent = letter || '';
+      intervalEl && intervalEl.classList.add('ghost');
+      letterEl && letterEl.classList.remove('ghost');
+    });
+  }
+
+  function showMinorTriad(rootLetter, rootStringIndex, rootFret) {
+    const triadSet = new Set([0, 3, 7]); // R, m3, P5
+
+    // Get specific triad positions for red outline
+    const triadPositions = GuitarAudio.getTriadNotes(rootStringIndex, rootFret, false);
+    const positionKeys = new Set(triadPositions.map(n => `${n.stringIndex}-${n.fret}`));
+
+    const notes = boardEl.querySelectorAll('.note');
+    notes.forEach((btn) => {
+      const noteLetter = btn.getAttribute('data-note');
+      if (!noteLetter) return;
+      if (noteLetter.includes('#')) {
+        btn.classList.add('sharp');
+      } else {
+        btn.classList.remove('sharp');
+      }
+      const intervalSteps = (NOTE_ORDER.indexOf(noteLetter) - NOTE_ORDER.indexOf(rootLetter) + 12) % 12;
+      const intervalEl = btn.querySelector('.interval');
+      const letterEl = btn.querySelector('.letter');
+
+      const btnStringIndex = btn.getAttribute('data-string-index');
+      const btnFret = btn.getAttribute('data-fret');
+      const posKey = `${btnStringIndex}-${btnFret}`;
+
+      if (triadSet.has(intervalSteps)) {
+        const label = intervalSteps === 0 ? 'R' : intervalSteps === 3 ? 'b3' : '5';
+        if (intervalEl) intervalEl.textContent = label;
+        if (letterEl) letterEl.textContent = noteLetter || '';
+        intervalEl && intervalEl.classList.remove('ghost');
+        letterEl && letterEl.classList.remove('ghost');
+        btn.classList.toggle('root', label === 'R');
+
+        // Only apply active-triad (red outline) to the specific 3 notes being played
+        if (positionKeys.has(posKey)) {
+          btn.classList.add('active-triad');
+        } else {
+          btn.classList.remove('active-triad');
+        }
+        btn.classList.remove('ghost'); // Show note
+      } else {
+        btn.classList.remove('active-triad');
+        if (intervalEl) intervalEl.textContent = '';
+        if (letterEl) letterEl.textContent = noteLetter || '';
+        intervalEl && intervalEl.classList.add('ghost');
+        letterEl && letterEl.classList.add('ghost');
+        btn.classList.remove('root');
+        btn.classList.add('ghost'); // Hide entire note
+      }
+    });
+  }
+
+  boardEl.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.note');
+    if (!btn) return;
+    const note = btn.getAttribute('data-note');
+    if (!note) return;
+
+    if (activeRoot === note) {
+      clearTriad();
+    } else {
+      activeRoot = note;
+      // Play the minor triad (Root, minor 3rd, Perfect 5th) at the clicked pitch
+      const openString = btn.getAttribute('data-open');
+      const fret = parseInt(btn.getAttribute('data-fret'), 10);
+      const stringIndex = parseInt(btn.getAttribute('data-string-index'), 10);
+
+      showMinorTriad(note, stringIndex, fret);
+
+      const rootFreq = GuitarAudio.getFrequency(openString, fret, stringIndex);
+      GuitarAudio.playTriad(rootFreq, [0, 3, 7]);
     }
   });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') clearTriad();
+  });
+
+  clearTriad();
 })();

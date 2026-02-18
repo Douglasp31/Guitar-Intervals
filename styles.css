@@ -11,7 +11,9 @@
   --yellow: #ffd54d;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   margin: 0;
@@ -36,16 +38,21 @@ body {
 
 .fret-numbers {
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  grid-template-columns: 40px 1fr var(--nut-width) repeat(22, 1fr);
   gap: 0;
   font-size: 12px;
   color: #444;
+  pointer-events: none;
+  /* Prevent blocking clicks */
 }
+
 .fret-markers {
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr);
+  grid-template-columns: 40px 1fr var(--nut-width) repeat(22, 1fr);
   align-items: center;
   height: 24px;
+  pointer-events: none;
+  /* Prevent blocking clicks */
 }
 
 .fret-markers .dot {
@@ -62,7 +69,10 @@ body {
   column-gap: 6px;
 }
 
-.fret-markers .double .dot { width: 7px; height: 7px; }
+.fret-markers .double .dot {
+  width: 7px;
+  height: 7px;
+}
 
 
 .fret-numbers div {
@@ -73,36 +83,81 @@ body {
 .fretboard {
   position: relative;
   display: grid;
-  grid-template-columns: 40px var(--nut-width) repeat(var(--fret-count), 1fr); /* left labels + nut + 22 frets */
+  grid-template-columns: 40px 1fr var(--nut-width) repeat(22, 1fr);
+  /* left labels + fret 0 + nut + 22 frets */
   grid-template-rows: repeat(var(--string-count), 64px);
   gap: 0;
   background: linear-gradient(#d3cfc8, #dad5cd);
   border-radius: 6px;
   overflow: hidden;
+  z-index: 5;
+  /* Ensure fretboard is above markers/numbers if they overlap */
 }
 
-/* Vertical frets */
+/* Shared grid lines for numbers, markers, and fretboard */
+.fret-numbers,
+.fret-markers {
+  position: relative;
+}
+
+/* Remove pseudo-element gradients */
+.fret-numbers::before,
+.fret-markers::before,
 .fretboard::before {
+  display: none;
+}
+
+/* Add vertical lines via borders on grid items */
+.fret-num-cell,
+.fret-marker-cell,
+.cell {
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Specific styling for marker cells to position dots */
+.fret-marker-cell {
+  height: 100%;
+}
+
+/* Nut styling */
+.nut {
+  grid-row: 1 / span var(--string-count);
+  grid-column: 3 / 4;
+  background: #bbb4aa;
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+  /* Right border of Nut */
+  box-shadow: inset 2px 0 0 rgba(0, 0, 0, 0.2);
+  /* Left inner shadow */
+}
+
+/* Nut cell in markers/numbers */
+.nut-cell {
+  background: #bbb4aa;
+  /* Match nut color */
+  border-right: 1px solid rgba(0, 0, 0, 0.25);
+}
+
+/* Line at start of Fret 0 (between labels and Fret 0) */
+.fretboard::after {
   content: "";
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 40px; /* start after string labels */
-  right: 0;
-  background-image:
-    linear-gradient(90deg, rgba(0,0,0,0.12) 0, rgba(0,0,0,0.12) 1px, transparent 1px),
-    linear-gradient(#0000, #0000);
-  background-size: calc(100% / (var(--fret-count) + 1)) 100%, 100% 100%;
-  background-position: 0 0;
+  left: 40px;
+  /* At the end of labels */
+  width: 1px;
+  background: rgba(0, 0, 0, 0.12);
   pointer-events: none;
 }
 
-/* Nut */
-.nut {
-  grid-row: 1 / span var(--string-count);
-  grid-column: 2 / 3;
-  background: #bbb4aa;
-  box-shadow: inset -2px 0 0 rgba(0,0,0,0.25);
+/* Per-string horizontal line */
+.string-row {
+  position: relative;
+  display: contents;
+  /* we draw notes inside cells */
 }
 
 .string-label {
@@ -113,11 +168,29 @@ body {
   color: #333;
 }
 
+.string-line {
+  position: absolute;
+  left: 40px;
+  /* after labels */
+  right: 0;
+  top: 50%;
+  height: 2px;
+  transform: translateY(-50%);
+  background: var(--string);
+  pointer-events: none;
+}
+
 .cell {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+}
+
+.cell:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  /* Visual feedback for clickability */
 }
 
 .note {
@@ -134,44 +207,54 @@ body {
   text-align: center;
   line-height: 1;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
   transition: transform 80ms ease, box-shadow 80ms ease, background-color 120ms ease;
+  position: relative;
+  /* Ensure z-index works */
+  z-index: 10;
+  /* Ensure note is above other elements */
 }
 
-.note:hover { transform: scale(1.05); }
-.note:focus-visible { outline: 2px solid #0066cc; outline-offset: 2px; }
+.note:hover {
+  transform: scale(1.05);
+}
 
-.note .interval { font-size: 11px; font-weight: 700; }
-.note .letter { font-size: 12px; }
+.note .interval {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.note .letter {
+  font-size: 12px;
+}
 
 /* Sharps: black fill, white text */
-.note.sharp { background: #111; border-color: #000; color: #fff; }
-
-/* Root override keeps yellow highlight readable even for sharps */
-.note.root { background: var(--yellow); color: var(--text); border-color: #444; }
-
-/* Triad shape notes - red outer ring to show notes being played */
-.note.triad-shape {
-  box-shadow: 0 0 0 3px #e53935, 0 0 0 5px rgba(229, 57, 53, 0.3);
-}
-.note.triad-shape.root {
-  box-shadow: 0 0 0 3px #e53935, 0 0 0 5px rgba(229, 57, 53, 0.3);
-}
-
-/* Triad-related notes - bold text for all matching triad notes across fretboard */
-.note.triad-related .letter {
-  font-weight: 700;
-  opacity: 1;
-}
-.note.triad-related.sharp .letter {
+.note.sharp {
+  background: #111;
+  border-color: #000;
   color: #fff;
 }
-.note.triad-related:not(.sharp) .letter {
-  color: #111;
+
+/* Root override keeps yellow highlight readable even for sharps */
+.note.root {
+  background: var(--yellow);
+  color: var(--text);
+  border-color: #444;
+}
+
+/* Active triad highlight */
+.note.active-triad {
+  border-color: #ff0000;
+  border-width: 2px;
+  box-shadow: 0 0 0 1px #ff0000;
+  /* Extra visibility */
 }
 
 .ghost {
-  opacity: 0.14;
+  opacity: 0;
+  pointer-events: none;
+  /* Make unclickable if hidden */
 }
 
 .hint {
@@ -180,8 +263,54 @@ body {
 }
 
 @media (max-width: 900px) {
-  :root { --note-size: 30px; }
-  .fretboard { grid-template-rows: repeat(var(--string-count), 56px); }
+  :root {
+    --note-size: 30px;
+  }
+
+  .fretboard {
+    grid-template-rows: repeat(var(--string-count), 56px);
+  }
 }
 
+/* Scale Selection Controls */
+.controls {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 
+.label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #444;
+}
+
+.button-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-scale {
+  padding: 6px 12px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.btn-scale:hover {
+  background: #f5f5f5;
+  border-color: #bbb;
+}
+
+.btn-scale.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
